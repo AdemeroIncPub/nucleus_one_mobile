@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Needed for google_sign_in package to retrieve "idToken" -->
+    <string name="default_web_client_id">661248912206-8uo87nli6sdlbq077t8799qdlki8onqp.apps.googleusercontent.com</string>
+</resources>
