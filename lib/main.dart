@@ -190,8 +190,8 @@ class _EmbededWebAppPage extends StatefulWidget {
 }
 
 class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
-  late String _userAgent;
-  late String _webUserAgent;
+  String? _userAgent;
+  String? _webUserAgent;
   iawv.InAppWebViewController? _webViewController;
 
   @override
@@ -235,7 +235,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_userAgent == '') {
+    if ((_userAgent == null) || (_userAgent == '')) {
       return Container();
     }
 
