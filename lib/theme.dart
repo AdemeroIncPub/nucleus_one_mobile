@@ -85,7 +85,7 @@ ThemeData _buildLightTheme() {
   baseTheme = baseTheme.copyWith(
       iconTheme: baseTheme.iconTheme.copyWith(color: _ThemeCommon.iconTheme_color),
       textTheme: baseTheme.textTheme.copyWith(
-          headline6: baseTheme.textTheme.headline6.copyWith(
+          headline6: baseTheme.textTheme.headline6!.copyWith(
               // color: _ThemeCommon._getPurpleTextColor(true, false),
               fontSize: _ThemeCommon.textTheme_title_fontSize,
               fontWeight: _ThemeCommon.textTheme_title_fontWeight)));
