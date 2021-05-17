@@ -4,7 +4,7 @@
     <item android:drawable="@android:color/white" />
     <item>
         <bitmap
-            android:gravity="center"
-            android:src="@drawable/nucleus_one" />
+            android:gravity=""
+            android:src="@drawable/nucleus_one_by_ademero" />
     </item>
 </layer-list>

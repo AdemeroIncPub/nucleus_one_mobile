@@ -1,27 +1,18 @@
-// @dart=2.10
-// TODO: Remove the above line once migrated to null safety
-
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:ext_storage/ext_storage.dart';
-import 'package:get_it/get_it.dart';
 import 'package:nucleus_one_dart_sdk/nucleus_one_dart_sdk.dart' as n1_sdk;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' as iawv;
 import 'package:google_sign_in/google_sign_in.dart' as gapi;
 import 'package:flutter/services.dart';
-import 'package:flutter_user_agent/flutter_user_agent.dart';
+import 'package:fk_user_agent/fk_user_agent.dart';
 import 'package:nucleus_one_mobile/common/spin_wait_dialog.dart';
 import 'package:nucleus_one_mobile/session.dart';
 import 'package:nucleus_one_mobile/theme.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
-// import 'package:webview_cookie_manager/webview_cookie_manager.dart';
-// import 'package:webview_flutter/webview_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -104,23 +95,27 @@ class _SinglePageAppHostModel with ChangeNotifier {
   }
 
   void _initiateLoginAttempt() {
-    Session.googleSignIn = gapi.GoogleSignIn();
-    Session.googleSignIn.signIn().then((googleSignInAccount) {
-      Session.googleSignInAccount = googleSignInAccount;
+    final gsi = Session.googleSignIn = gapi.GoogleSignIn();
+    gsi.signIn().then((googleSignInAccount) {
+      final gsia = Session.googleSignInAccount = googleSignInAccount!;
 
-      Session.googleSignInAccount.authentication.then((googleKey) async {
+      gsia.authentication.then((googleKey) async {
+        final googleKeyIdToken = googleKey.idToken;
+        if (googleKeyIdToken == null) {
+          throw StateError('Unable to obtain Google sign-in token.');
+        }
+
         // print(googleKey.accessToken);
-        // print(googleKey.idToken);
+        // print(googleKeyIdToken);
         // print(Session.googleSignIn.currentUser.displayName);
 
-        // TODO: Find something better than this
         final browserFingerprint = Uuid().v4().hashCode;
-        final authApi = Session.n1App.auth();
+        final authApi = Session.n1App!.auth();
 
-        final loginResult = await authApi.loginGoogle(browserFingerprint, googleKey.idToken);
+        final loginResult = await authApi.loginGoogle(browserFingerprint, googleKeyIdToken);
         if (loginResult.success) {
-          Session.n1SessionId = loginResult.sessionId;
-          Session.n1User = loginResult.user;
+          Session.n1SessionId = loginResult.sessionId!;
+          Session.n1User = loginResult.user!;
           loggedIn = true;
         }
         initializing = false;
@@ -147,7 +142,7 @@ class _SinglePageAppHost extends StatefulWidget {
 }
 
 class _SinglePageAppHostState extends State<_SinglePageAppHost> {
-  _SinglePageAppHostModel _model;
+  late _SinglePageAppHostModel _model;
 
   @override
   void initState() {
@@ -160,9 +155,9 @@ class _SinglePageAppHostState extends State<_SinglePageAppHost> {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<_SinglePageAppHostModel>.value(
         value: _model,
-        builder: (BuildContext context, Widget child) {
+        builder: (BuildContext context, Widget? child) {
           return Consumer<_SinglePageAppHostModel>(
-            builder: (context, selector, child) {
+            builder: (context, selector, child2) {
               return Scaffold(
                 body: SafeArea(
                   child: _buildSpaChild(context),
@@ -195,9 +190,9 @@ class _EmbededWebAppPage extends StatefulWidget {
 }
 
 class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
-  String _userAgent;
-  String _webUserAgent;
-  iawv.InAppWebViewController _webViewController;
+  late String _userAgent;
+  late String _webUserAgent;
+  iawv.InAppWebViewController? _webViewController;
 
   @override
   void initState() {
@@ -213,15 +208,15 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
     String userAgent, webViewUserAgent;
     // Platform messages may fail, so we use a try/catch PlatformException.
     try {
-      userAgent = await FlutterUserAgent.getPropertyAsync('userAgent');
-      await FlutterUserAgent.init();
-      webViewUserAgent = FlutterUserAgent.webViewUserAgent;
+      userAgent = await FkUserAgent.getPropertyAsync('userAgent');
+      await FkUserAgent.init();
+      webViewUserAgent = FkUserAgent.webViewUserAgent ?? '';
       print('''
-  applicationVersion => ${FlutterUserAgent.getProperty('applicationVersion')}
-  systemName         => ${FlutterUserAgent.getProperty('systemName')}
+  applicationVersion => ${FkUserAgent.getProperty('applicationVersion')}
+  systemName         => ${FkUserAgent.getProperty('systemName')}
   userAgent          => $userAgent
   webViewUserAgent   => $webViewUserAgent
-  packageUserAgent   => ${FlutterUserAgent.getProperty('packageUserAgent')}
+  packageUserAgent   => ${FkUserAgent.getProperty('packageUserAgent')}
         ''');
     } on PlatformException {
       userAgent = webViewUserAgent = '<error>';
@@ -240,7 +235,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_userAgent == null) {
+    if (_userAgent == '') {
       return Container();
     }
 
@@ -255,7 +250,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           ),
           onWebViewCreated: (iawv.InAppWebViewController controller) async {
             _webViewController = controller;
-            _initializeWebViewController(_webViewController);
+            _initializeWebViewController(_webViewController!);
 
             final urlForCookie = Uri.parse(Session.WebAppBaseUrl + '/');
             const initialUrlAsString = Session.WebAppBaseUrl + '/dashboard';
@@ -278,11 +273,11 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
             await cookieManager.setCookie(
                 url: urlForCookie,
                 name: 'session_v1',
-                value: Session.n1SessionId,
+                value: Session.n1SessionId!,
                 domain: initialDomain,
                 isHttpOnly: false);
 
-            _webViewController.loadUrl(
+            _webViewController!.loadUrl(
               urlRequest: iawv.URLRequest(url: initialUrl),
               // headers: {
               //   'Cookie': 'G_ENABLED_IDPS=google; G_AUTHUSER_H=0; session_
@@ -292,7 +287,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           shouldOverrideUrlLoading: (controller, navAction) async {
             final url = navAction.request.url;
 
-            if (url.path.endsWith('/login')) {
+            if (url?.path.endsWith('/login') == true) {
               setState(() {});
               return iawv.NavigationActionPolicy.CANCEL;
             }
@@ -308,11 +303,11 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           //     this.url = url;
           //   });
           // },
-          onLoadStop: (iawv.InAppWebViewController controller, Uri url) async {
+          onLoadStop: (iawv.InAppWebViewController controller, Uri? url) async {
             final js = await rootBundle.loadString('assets/js/core.js');
-            
+
             // Inject JavaScript that will receive data back from Flutter
-            _webViewController.evaluateJavascript(source: js);
+            _webViewController!.evaluateJavascript(source: js);
           },
           // onProgressChanged: (InAppWebViewController controller, int progress) {
           //   setState(() {
@@ -334,15 +329,18 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
   }
 
   Future<bool> _exitApp(BuildContext context) async {
-    if (await _webViewController.canGoBack()) {
-      _webViewController.goBack();
-      return true;
-    } else {
+    final wvc = _webViewController;
+    if (wvc != null) {
+      if (await wvc.canGoBack()) {
+        wvc.goBack();
+        return true;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No back history item')),
       );
-      return false;
     }
+    return false;
   }
 
   void _handleRouterLocationChangedEvent(String pathName) async {
@@ -350,7 +348,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
       case '/logout':
         Session.n1SessionId = null;
         if (Session.googleSignIn != null) {
-          await Session.googleSignIn.signOut();
+          await Session.googleSignIn!.signOut();
           Session.googleSignIn = null;
           Session.googleSignInAccount = null;
         }

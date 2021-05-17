@@ -1,6 +1,3 @@
-// @dart=2.10
-// TODO: Remove the above line once migrated to null safety
-
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:google_sign_in/google_sign_in.dart' as gapi;
 
@@ -14,10 +11,10 @@ abstract class Session {
   static const ApiBaseUrl = 'http://$HostName:8080';
   static const WebAppBaseUrl = 'http://$HostName:3000';
 
-  static NucleusOneApp n1App;
-  static String n1SessionId;
-  static User n1User;
+  static NucleusOneApp? n1App;
+  static String? n1SessionId;
+  static User? n1User;
 
-  static GoogleSignInAccount googleSignInAccount;
-  static gapi.GoogleSignIn googleSignIn;
+  static GoogleSignInAccount? googleSignInAccount;
+  static gapi.GoogleSignIn? googleSignIn;
 }
