@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:isolate';
+import 'dart:ui';
 
 import 'package:nucleus_one_dart_sdk/nucleus_one_dart_sdk.dart' as n1_sdk;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+// import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' as iawv;
 import 'package:google_sign_in/google_sign_in.dart' as gapi;
 import 'package:flutter/services.dart';
@@ -10,8 +13,10 @@ import 'package:fk_user_agent/fk_user_agent.dart';
 import 'package:nucleus_one_mobile/common/spin_wait_dialog.dart';
 import 'package:nucleus_one_mobile/session.dart';
 import 'package:nucleus_one_mobile/theme.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 void main() async {
@@ -21,6 +26,14 @@ void main() async {
   // _forceDebugProxy();
   runApp(MyApp());
 }
+
+// void downloadCallback(String id, DownloadTaskStatus status, int progress) {
+//   /*if (debug)*/ {
+//     print('Background Isolate Callback: task ($id) is in status ($status) and process ($progress)');
+//   }
+//   final send = IsolateNameServer.lookupPortByName('downloader_send_port')!;
+//   send.send([id, status, progress]);
+// }
 
 Future<void> _initialzeDependencies() async {
   await n1_sdk.NucleusOne.intializeSdk();
@@ -32,6 +45,11 @@ Future<void> _initialzeDependencies() async {
   await Permission.camera.request();
   await Permission.microphone.request();
   await Permission.storage.request();
+
+  // await FlutterDownloader.initialize(
+  //   debug: true, // optional: set false to disable printing logs to console
+  // );
+  // FlutterDownloader.registerCallback(downloadCallback);
 }
 
 /*
@@ -178,7 +196,8 @@ class _SinglePageAppHostState extends State<_SinglePageAppHost> {
     } else if (modelLocal.loggedIn) {
       child = _EmbededWebAppPage();
     } else {
-      child = _LoggedOut();
+      child = _EmbededWebAppPage();
+      // child = _LoggedOut();
     }
     return child;
   }
@@ -192,7 +211,6 @@ class _EmbededWebAppPage extends StatefulWidget {
 class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
   String? _userAgent;
   String? _webUserAgent;
-  iawv.InAppWebViewController? _webViewController;
 
   @override
   void initState() {
@@ -235,88 +253,167 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
 
   @override
   Widget build(BuildContext context) {
-    if ((_userAgent == null) || (_userAgent == '')) {
+    if ((_webUserAgent == null) || (_webUserAgent == '')) {
       return Container();
     }
 
     return SafeArea(
-      child: WillPopScope(
-        onWillPop: () => _exitApp(context),
-        child: iawv.InAppWebView(
-          // initialUrl: "https://flutter.dev/",
-          // initialHeaders: {},
-          initialOptions: iawv.InAppWebViewGroupOptions(
-            crossPlatform: iawv.InAppWebViewOptions(),
+      child: _buildInAppWebView(context),
+    );
+  }
+
+  Widget _buildInAppWebView(BuildContext context,
+      [iawv.CreateWindowAction? onCreateWindowRequest]) {
+    final isChildWindow = (onCreateWindowRequest != null);
+    iawv.InAppWebViewController? _webViewController;
+
+    final urlForCookie = Uri.parse(Session.WebAppBaseUrl + '/');
+    const initialUrlAsString = Session.WebAppBaseUrl + '/dashboard';
+    final initialUrl = Uri.parse(initialUrlAsString);
+    final initialDomain = initialUrl.host;
+
+    final retIawv = WillPopScope(
+      onWillPop: () async {
+        final wvc = _webViewController!;
+        if (await wvc.canGoBack()) {
+          // Get the webview history
+          final webHistory = await wvc.getCopyBackForwardList();
+          if ((webHistory!.currentIndex ?? 0) > 0) {
+            await wvc.goBack();
+            return false;
+          }
+        }
+        return true;
+      },
+      child: iawv.InAppWebView(
+        // Setting the windowId property is important here!
+        windowId: onCreateWindowRequest?.windowId,
+        initialUrlRequest:
+            isChildWindow ? onCreateWindowRequest!.request : iawv.URLRequest(url: initialUrl),
+        initialOptions: iawv.InAppWebViewGroupOptions(
+          android: iawv.AndroidInAppWebViewOptions(
+            supportMultipleWindows: true,
+            useHybridComposition: true,
           ),
-          onWebViewCreated: (iawv.InAppWebViewController controller) async {
-            _webViewController = controller;
-            _initializeWebViewController(_webViewController!);
-
-            final urlForCookie = Uri.parse(Session.WebAppBaseUrl + '/');
-            const initialUrlAsString = Session.WebAppBaseUrl + '/dashboard';
-            final initialUrl = Uri.parse(initialUrlAsString);
-            final initialDomain = initialUrl.host;
-
-            final cookieManager = iawv.CookieManager.instance();
-            await cookieManager.setCookie(
-                url: urlForCookie,
-                name: 'G_ENABLED_IDPS',
-                value: 'google',
-                domain: initialDomain,
-                isHttpOnly: false);
-            await cookieManager.setCookie(
-                url: urlForCookie,
-                name: 'G_AUTHUSER_H',
-                value: '0',
-                domain: initialDomain,
-                isHttpOnly: false);
-            await cookieManager.setCookie(
-                url: urlForCookie,
-                name: 'session_v1',
-                value: Session.n1SessionId!,
-                domain: initialDomain,
-                isHttpOnly: false);
-
-            _webViewController!.loadUrl(
-              urlRequest: iawv.URLRequest(url: initialUrl),
-              // headers: {
-              //   'Cookie': 'G_ENABLED_IDPS=google; G_AUTHUSER_H=0; session_
-              // },
-            );
-          },
-          shouldOverrideUrlLoading: (controller, navAction) async {
-            final url = navAction.request.url;
-
-            if (url?.path.endsWith('/login') == true) {
-              setState(() {});
-              return iawv.NavigationActionPolicy.CANCEL;
-            }
-            return iawv.NavigationActionPolicy.ALLOW;
-          },
-          onConsoleMessage:
-              (iawv.InAppWebViewController controller, iawv.ConsoleMessage consoleMessage) {
-            print('----------------------------------------------------------------------------');
-            print(consoleMessage.message);
-          },
-          // onLoadStart: (InAppWebViewController controller, String url) {
-          //   setState(() {
-          //     this.url = url;
-          //   });
-          // },
-          onLoadStop: (iawv.InAppWebViewController controller, Uri? url) async {
-            final js = await rootBundle.loadString('assets/js/core.js');
-
-            // Inject JavaScript that will receive data back from Flutter
-            _webViewController!.evaluateJavascript(source: js);
-          },
-          // onProgressChanged: (InAppWebViewController controller, int progress) {
-          //   setState(() {
-          //     this.progress = progress / 100;
-          //   });
-          // },
+          crossPlatform: iawv.InAppWebViewOptions(
+            userAgent: _webUserAgent!,
+            javaScriptCanOpenWindowsAutomatically: true,
+            useShouldOverrideUrlLoading: true,
+            useOnDownloadStart: true,
+          ),
         ),
+        onCreateWindow: (controller, onCreateWindowRequest) async {
+          showDialog(
+            context: context,
+            builder: (context) {
+              return Container(
+                  child: Column(children: <Widget>[
+                Expanded(
+                  child: _buildInAppWebView(context, onCreateWindowRequest),
+                )
+              ]));
+            },
+          );
+
+          return true;
+        },
+        onCloseWindow: (controller) {
+          if (isChildWindow) {
+            Navigator.of(context).pop();
+          }
+        },
+        onWebViewCreated: (iawv.InAppWebViewController controller) async {
+          _webViewController = controller;
+          _initializeWebViewController(_webViewController!);
+
+          final cookieManager = iawv.CookieManager.instance();
+          await cookieManager.setCookie(
+              url: urlForCookie,
+              name: 'G_ENABLED_IDPS',
+              value: 'google',
+              domain: initialDomain,
+              isHttpOnly: false);
+          await cookieManager.setCookie(
+              url: urlForCookie,
+              name: 'G_AUTHUSER_H',
+              value: '0',
+              domain: initialDomain,
+              isHttpOnly: false);
+          await cookieManager.setCookie(
+              url: urlForCookie,
+              name: 'session_v1',
+              value: Session.n1SessionId!,
+              domain: initialDomain,
+              isHttpOnly: false);
+        },
+        onDownloadStart: (controller, url) async {
+          final urlString = url.toString();
+
+          // print("onDownloadStart $url");
+
+          // final downloadLocation = await getExternalStorageDirectory();
+
+          // if (downloadLocation == null) {
+          //   return;
+          // }
+
+          // final taskId = await FlutterDownloader.enqueue(
+          //   url: url.toString(),
+          //   savedDir: downloadLocation.path,
+          // );
+
+          // if (await canLaunch(urlString)) {
+          //   await launch(urlString);
+          //   return;
+          // }
+
+          // TODO: Revisit this when the following issue is addressed
+          // https://github.com/fluttercommunity/flutter_downloader/issues/466
+          showDialog<void>(
+            context: context,
+            barrierDismissible: true,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Error'),
+                content: SingleChildScrollView(
+                  child: Text('This feature is currently under development.'),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('OK'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        },
+        shouldOverrideUrlLoading: (controller, navAction) async {
+          final url = navAction.request.url;
+
+          // if (url?.path.endsWith('/login') == true) {
+          //   setState(() {});
+          //   return iawv.NavigationActionPolicy.CANCEL;
+          // }
+          return iawv.NavigationActionPolicy.ALLOW;
+        },
+        onConsoleMessage:
+            (iawv.InAppWebViewController controller, iawv.ConsoleMessage consoleMessage) {
+          print('----------------------------------------------------------------------------');
+          print(consoleMessage.message);
+        },
+        onLoadStop: (iawv.InAppWebViewController controller, Uri? url) async {
+          final js = await rootBundle.loadString('assets/js/core.js');
+
+          // Inject JavaScript that will receive data back from Flutter
+          _webViewController!.evaluateJavascript(source: js);
+        },
       ),
     );
+
+    return retIawv;
   }
 
   void _initializeWebViewController(iawv.InAppWebViewController controller) {
@@ -326,21 +423,16 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           final argMap = args[0] as Map;
           _handleRouterLocationChangedEvent(argMap['pathname'] as String);
         });
-  }
 
-  Future<bool> _exitApp(BuildContext context) async {
-    final wvc = _webViewController;
-    if (wvc != null) {
-      if (await wvc.canGoBack()) {
-        wvc.goBack();
-        return true;
-      }
+    controller.addJavaScriptHandler(
+        handlerName: 'login_handleGoogleLogin',
+        callback: (args) {
+          // final argMap = args[0] as Map;
+          // _handleRouterLocationChangedEvent(argMap['pathname'] as String);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No back history item')),
-      );
-    }
-    return false;
+          final model = context.read<_SinglePageAppHostModel>();
+          model.reinitialize();
+        });
   }
 
   void _handleRouterLocationChangedEvent(String pathName) async {
@@ -361,28 +453,28 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
   }
 }
 
-class _LoggedOut extends StatefulWidget {
-  @override
-  _LoggedOutState createState() => _LoggedOutState();
-}
+// class _LoggedOut extends StatefulWidget {
+//   @override
+//   _LoggedOutState createState() => _LoggedOutState();
+// }
 
-class _LoggedOutState extends State<_LoggedOut> {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset('assets/images/nucleusOne.png'),
-          ElevatedButton(
-            child: Text('SIGN IN'),
-            onPressed: () {
-              final model = context.read<_SinglePageAppHostModel>();
-              model.reinitialize();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
+// class _LoggedOutState extends State<_LoggedOut> {
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(
+//       child: Column(
+//         mainAxisAlignment: MainAxisAlignment.center,
+//         children: [
+//           Image.asset('assets/images/nucleusOne.png'),
+//           ElevatedButton(
+//             child: Text('SIGN IN'),
+//             onPressed: () {
+//               final model = context.read<_SinglePageAppHostModel>();
+//               model.reinitialize();
+//             },
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
