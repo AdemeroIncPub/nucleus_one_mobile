@@ -2,14 +2,19 @@ function listenToRouterLocationChanged() {
   addEventListener('routerLocationChanged', async function (e) {
     // Call Flutter JavaScript handler callback
     await window.flutter_inappwebview.callHandler('routerLocationChanged', e.detail);
-    const pathname = e.detail['pathname'];
-
-    if (pathname === '/login') {
-      listenForLoginEvents();
-    } else {
-      stopListeningForLoginEvents();
-    }
+    _handleListeningOnCurrentPage(e.detail.pathname);
   }, false);
+  
+  _handleListeningOnCurrentPage(location.pathname);
+}
+
+function _handleListeningOnCurrentPage(urlPath) {
+  console.log('_handleListeningOnCurrentPage: ' + urlPath);
+  if (urlPath === '/login') {
+    listenForLoginEvents();
+  } else {
+    stopListeningForLoginEvents();
+  }
 }
 
 function initialize() {
@@ -64,7 +69,7 @@ function listenForLoginEvents() {
 function stopListeningForLoginEvents() {
   if (_listenForLoginEventsListener) {
     console.log('Stopping listening...');
-    
+
     // root is the root of your React application
     const root = document.querySelector('#root');
     root.removeEventListener(_listenForLoginEventsListener);

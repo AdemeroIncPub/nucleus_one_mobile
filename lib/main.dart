@@ -90,8 +90,15 @@ class MyApp extends StatelessWidget {
   }
 }
 
+enum OnDeviceAccountAuthProvider { google }
+
 class _SinglePageAppHostModel with ChangeNotifier {
+  static const initialUrlAsString = Session.WebAppBaseUrl + '/dashboard';
+  final initialUrl = Uri.parse(initialUrlAsString);
+  String get initialDomain => initialUrl.host;
+
   bool loggedIn = false;
+  OnDeviceAccountAuthProvider? loggedInWithOnDeviceAcct;
   bool errorDuringInitialization = false;
 
   bool _initializing = true;
@@ -105,52 +112,86 @@ class _SinglePageAppHostModel with ChangeNotifier {
     notifyListeners();
   }
 
-  void reinitialize() {
+  void reinitialize(OnDeviceAccountAuthProvider? loginWithOnDeviceAuthProvider) {
     loggedIn = false;
+    loggedInWithOnDeviceAcct = null;
     errorDuringInitialization = false;
     initializing = true;
-    _initiateLoginAttempt();
+    if (loginWithOnDeviceAuthProvider == null) {
+      initializing = false;
+    } else {
+      _initiateLoginAttempt(loginWithOnDeviceAuthProvider);
+    }
   }
 
-  void _initiateLoginAttempt() {
-    final gsi = Session.googleSignIn = gapi.GoogleSignIn();
-    gsi.signIn().then((googleSignInAccount) {
-      final gsia = Session.googleSignInAccount = googleSignInAccount!;
+  void _initiateLoginAttempt(OnDeviceAccountAuthProvider loginWithOnDeviceAuthProvider) {
+    switch (loginWithOnDeviceAuthProvider) {
+      case OnDeviceAccountAuthProvider.google:
+        final gsi = Session.googleSignIn = gapi.GoogleSignIn();
+        gsi.signIn().then((googleSignInAccount) {
+          final gsia = Session.googleSignInAccount = googleSignInAccount!;
 
-      gsia.authentication.then((googleKey) async {
-        final googleKeyIdToken = googleKey.idToken;
-        if (googleKeyIdToken == null) {
-          throw StateError('Unable to obtain Google sign-in token.');
-        }
+          gsia.authentication.then((googleKey) async {
+            final googleKeyIdToken = googleKey.idToken;
+            if (googleKeyIdToken == null) {
+              throw StateError('Unable to obtain Google sign-in token.');
+            }
 
-        // print(googleKey.accessToken);
-        // print(googleKeyIdToken);
-        // print(Session.googleSignIn.currentUser.displayName);
+            // print(googleKey.accessToken);
+            // print(googleKeyIdToken);
+            // print(Session.googleSignIn.currentUser.displayName);
 
-        final browserFingerprint = Uuid().v4().hashCode;
-        final authApi = Session.n1App!.auth();
+            final browserFingerprint = Uuid().v4().hashCode;
+            final authApi = Session.n1App!.auth();
 
-        final loginResult = await authApi.loginGoogle(browserFingerprint, googleKeyIdToken);
-        if (loginResult.success) {
-          Session.n1SessionId = loginResult.sessionId!;
-          Session.n1User = loginResult.user!;
-          loggedIn = true;
-        }
-        initializing = false;
-      }).catchError((err) {
-        print(err);
+            final loginResult = await authApi.loginGoogle(browserFingerprint, googleKeyIdToken);
+            if (loginResult.success) {
+              Session.n1SessionId = loginResult.sessionId!;
+              Session.n1User = loginResult.user!;
 
-        // TODO: Log to Crashlytics
+              {
+                final urlForCookie = Uri.parse(Session.WebAppBaseUrl + '/');
 
-        errorDuringInitialization = true;
-        initializing = false;
-      });
-    }).catchError((err) {
-      // This path is only known to occur when the user doesn't select a Google account at the shown prompt
-      print(err);
+                final cookieManager = iawv.CookieManager.instance();
+                await cookieManager.setCookie(
+                    url: urlForCookie,
+                    name: 'G_ENABLED_IDPS',
+                    value: 'google',
+                    domain: initialDomain,
+                    isHttpOnly: false);
+                await cookieManager.setCookie(
+                    url: urlForCookie,
+                    name: 'G_AUTHUSER_H',
+                    value: '0',
+                    domain: initialDomain,
+                    isHttpOnly: false);
+                await cookieManager.setCookie(
+                    url: urlForCookie,
+                    name: 'session_v1',
+                    value: Session.n1SessionId!,
+                    domain: initialDomain,
+                    isHttpOnly: false);
+              }
 
-      initializing = false;
-    });
+              loggedIn = true;
+            }
+            initializing = false;
+          }).catchError((err) {
+            print(err);
+
+            // TODO: Log to Crashlytics
+
+            errorDuringInitialization = true;
+            initializing = false;
+          });
+        }).catchError((err) {
+          // This path is only known to occur when the user doesn't select a Google account at the shown prompt
+          print(err);
+
+          initializing = false;
+        });
+        break;
+    }
   }
 }
 
@@ -166,7 +207,7 @@ class _SinglePageAppHostState extends State<_SinglePageAppHost> {
   void initState() {
     super.initState();
     _model = _SinglePageAppHostModel();
-    _model.reinitialize();
+    _model.reinitialize(null);
   }
 
   @override
@@ -187,19 +228,8 @@ class _SinglePageAppHostState extends State<_SinglePageAppHost> {
   }
 
   Widget _buildSpaChild(BuildContext context) {
-    Widget child;
-
     final modelLocal = context.watch<_SinglePageAppHostModel>();
-
-    if (modelLocal.initializing) {
-      child = const SpinWaitDialog();
-    } else if (modelLocal.loggedIn) {
-      child = _EmbededWebAppPage();
-    } else {
-      child = _EmbededWebAppPage();
-      // child = _LoggedOut();
-    }
-    return child;
+    return modelLocal.initializing ? const SpinWaitDialog() : _EmbededWebAppPage();
   }
 }
 
@@ -211,6 +241,7 @@ class _EmbededWebAppPage extends StatefulWidget {
 class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
   String? _userAgent;
   String? _webUserAgent;
+  _SinglePageAppHostModel? _model;
 
   @override
   void initState() {
@@ -264,13 +295,9 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
 
   Widget _buildInAppWebView(BuildContext context,
       [iawv.CreateWindowAction? onCreateWindowRequest]) {
+    final model = _model = context.read<_SinglePageAppHostModel>();
     final isChildWindow = (onCreateWindowRequest != null);
     iawv.InAppWebViewController? _webViewController;
-
-    final urlForCookie = Uri.parse(Session.WebAppBaseUrl + '/');
-    const initialUrlAsString = Session.WebAppBaseUrl + '/dashboard';
-    final initialUrl = Uri.parse(initialUrlAsString);
-    final initialDomain = initialUrl.host;
 
     final retIawv = WillPopScope(
       onWillPop: () async {
@@ -289,7 +316,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
         // Setting the windowId property is important here!
         windowId: onCreateWindowRequest?.windowId,
         initialUrlRequest:
-            isChildWindow ? onCreateWindowRequest!.request : iawv.URLRequest(url: initialUrl),
+            isChildWindow ? onCreateWindowRequest!.request : _buildURLRequest(model.initialUrl),
         initialOptions: iawv.InAppWebViewGroupOptions(
           android: iawv.AndroidInAppWebViewOptions(
             supportMultipleWindows: true,
@@ -305,7 +332,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
         onCreateWindow: (controller, onCreateWindowRequest) async {
           showDialog(
             context: context,
-            builder: (context) {
+            builder: (_) {
               return Container(
                   child: Column(children: <Widget>[
                 Expanded(
@@ -325,26 +352,6 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
         onWebViewCreated: (iawv.InAppWebViewController controller) async {
           _webViewController = controller;
           _initializeWebViewController(_webViewController!);
-
-          final cookieManager = iawv.CookieManager.instance();
-          await cookieManager.setCookie(
-              url: urlForCookie,
-              name: 'G_ENABLED_IDPS',
-              value: 'google',
-              domain: initialDomain,
-              isHttpOnly: false);
-          await cookieManager.setCookie(
-              url: urlForCookie,
-              name: 'G_AUTHUSER_H',
-              value: '0',
-              domain: initialDomain,
-              isHttpOnly: false);
-          await cookieManager.setCookie(
-              url: urlForCookie,
-              name: 'session_v1',
-              value: Session.n1SessionId!,
-              domain: initialDomain,
-              isHttpOnly: false);
         },
         onDownloadStart: (controller, url) async {
           final urlString = url.toString();
@@ -416,6 +423,12 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
     return retIawv;
   }
 
+  iawv.URLRequest _buildURLRequest(Uri url) {
+    return iawv.URLRequest(
+      url: url,
+    );
+  }
+
   void _initializeWebViewController(iawv.InAppWebViewController controller) {
     controller.addJavaScriptHandler(
         handlerName: 'routerLocationChanged',
@@ -430,8 +443,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           // final argMap = args[0] as Map;
           // _handleRouterLocationChangedEvent(argMap['pathname'] as String);
 
-          final model = context.read<_SinglePageAppHostModel>();
-          model.reinitialize();
+          _model!.reinitialize(OnDeviceAccountAuthProvider.google);
         });
   }
 
@@ -444,7 +456,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           Session.googleSignIn = null;
           Session.googleSignInAccount = null;
         }
-        final model = context.read<_SinglePageAppHostModel>();
+        final model = _model!;
         model.loggedIn = false;
         model.forceNotifyListeners();
         break;
