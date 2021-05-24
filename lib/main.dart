@@ -1,7 +1,6 @@
 import 'dart:convert';
-import 'dart:isolate';
-import 'dart:ui';
 
+import 'package:get_it/get_it.dart';
 import 'package:nucleus_one_dart_sdk/nucleus_one_dart_sdk.dart' as n1_sdk;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -11,13 +10,16 @@ import 'package:google_sign_in/google_sign_in.dart' as gapi;
 import 'package:flutter/services.dart';
 import 'package:fk_user_agent/fk_user_agent.dart';
 import 'package:nucleus_one_mobile/common/spin_wait_dialog.dart';
-import 'package:nucleus_one_mobile/session.dart';
+import 'package:nucleus_one_mobile/shared_state/session.dart';
 import 'package:nucleus_one_mobile/theme.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
+
+import 'service_locator.dart';
+import 'shared_state/preferences.dart';
+
+final _sl = GetIt.instance;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,7 @@ void main() async {
 // }
 
 Future<void> _initialzeDependencies() async {
+  await initializeServiceLocator();
   await n1_sdk.NucleusOne.intializeSdk();
   Session.n1App = await n1_sdk.NucleusOne.initializeApp(
       options: n1_sdk.NucleusOneOptions(
@@ -141,9 +144,8 @@ class _SinglePageAppHostModel with ChangeNotifier {
             // print(googleKeyIdToken);
             // print(Session.googleSignIn.currentUser.displayName);
 
-            final browserFingerprint = Uuid().v4().hashCode;
+            final browserFingerprint = await _getDeviceBrowserFingerprint();
             final authApi = Session.n1App!.auth();
-
             final loginResult = await authApi.loginGoogle(browserFingerprint, googleKeyIdToken);
             if (loginResult.success) {
               Session.n1SessionId = loginResult.sessionId!;
@@ -192,6 +194,16 @@ class _SinglePageAppHostModel with ChangeNotifier {
         });
         break;
     }
+  }
+
+  Future<int> _getDeviceBrowserFingerprint() async {
+    final prefs = _sl<Preferences>();
+    var browserFingerprint = prefs.deviceBrowserFingerprint;
+    if (browserFingerprint == null) {
+      browserFingerprint = Uuid().v4().hashCode;
+      await prefs.setDeviceBrowserFingerprint(browserFingerprint);
+    }
+    return browserFingerprint;
   }
 }
 
