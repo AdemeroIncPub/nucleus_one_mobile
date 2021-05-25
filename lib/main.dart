@@ -96,7 +96,7 @@ class MyApp extends StatelessWidget {
 enum OnDeviceAccountAuthProvider { google }
 
 class _SinglePageAppHostModel with ChangeNotifier {
-  static const initialUrlAsString = Session.WebAppBaseUrl + '/dashboard';
+  static const initialUrlAsString = Session.WebAppBaseUrl;
   final initialUrl = Uri.parse(initialUrlAsString);
   String get initialDomain => initialUrl.host;
 
