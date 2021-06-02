@@ -58,7 +58,7 @@ Future<void> _initialzeDependencies() async {
 /*
 class _MyProxyHttpOverride extends HttpOverrides {
   @override
-  HttpClient createHttpClient(SecurityContext context) {
+  HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)
       ..findProxy = (uri) {
         return "PROXY 192.168.1.105:8888;";
@@ -164,7 +164,7 @@ class _SinglePageAppHostModel with ChangeNotifier {
                 await cookieManager.setCookie(
                     url: urlForCookie,
                     name: 'G_AUTHUSER_H',
-                    value: '0',
+                    value: '1',
                     domain: initialDomain,
                     isHttpOnly: false);
                 await cookieManager.setCookie(
@@ -366,7 +366,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           _initializeWebViewController(_webViewController!);
         },
         onDownloadStart: (controller, url) async {
-          final urlString = url.toString();
+          // final urlString = url.toString();
 
           // print("onDownloadStart $url");
 
@@ -461,6 +461,23 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
 
   void _handleRouterLocationChangedEvent(String pathName) async {
     switch (pathName) {
+      case '/dashboard':
+        if (!_model!.loggedIn) {
+          final urlForCookie = Uri.parse(Session.WebAppBaseUrl + '/');
+          final cookieManager = iawv.CookieManager.instance();
+          final sessionId = (await cookieManager.getCookie(url: urlForCookie, name: 'session_v1'))
+              ?.value as String?;
+
+          if (sessionId == null) {
+            return;
+          }
+
+          final r = Session.n1App!.auth().reestablishExistingSession(sessionId);
+          Session.n1SessionId = sessionId;
+          Session.n1User = r.user;
+          _model!.loggedIn = true;
+        }
+        break;
       case '/logout':
         Session.n1SessionId = null;
         if (Session.googleSignIn != null) {
