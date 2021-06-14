@@ -240,8 +240,26 @@ class _SinglePageAppHostState extends State<_SinglePageAppHost> {
   }
 
   Widget _buildSpaChild(BuildContext context) {
+    final webAppPage = _EmbededWebAppPage();
     final modelLocal = context.watch<_SinglePageAppHostModel>();
-    return modelLocal.initializing ? const SpinWaitDialog() : _EmbededWebAppPage();
+    return modelLocal.initializing ? const SpinWaitDialog() : webAppPage;
+  }
+}
+
+class _EmbededWebAppPageModel with ChangeNotifier {
+  bool _initializing = true;
+  bool get initializing => _initializing;
+  set initializing(bool value) {
+    _initializing = value;
+    notifyListeners();
+  }
+
+  void forceNotifyListeners() {
+    notifyListeners();
+  }
+
+  void finishInitialization() {
+    initializing = false;
   }
 }
 
@@ -254,12 +272,14 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
   String? _userAgent;
   String? _webUserAgent;
   _SinglePageAppHostModel? _model;
+  late _EmbededWebAppPageModel _lateModel;
+  bool _isFirstRun = true;
 
   @override
   void initState() {
     super.initState();
+    _lateModel = _EmbededWebAppPageModel();
     initUserAgentState();
-
     // TODO: Remove this before publishing
     iawv.AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
   }
@@ -300,9 +320,31 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
       return Container();
     }
 
-    return SafeArea(
-      child: _buildInAppWebView(context),
+    return ChangeNotifierProvider<_EmbededWebAppPageModel>.value(
+        value: _lateModel,
+        builder: (BuildContext context, Widget? child) {
+          return Consumer<_EmbededWebAppPageModel>(
+            builder: (context, selector, child2) {
+              return SafeArea(
+                child: _buildSpaChild(context),
+              );
+            },
+          );
+        });
+  }
+
+  Widget _buildSpaChild(BuildContext context) {
+    final modelLocal = context.watch<_EmbededWebAppPageModel>();
+    final stack = Stack(
+      fit: StackFit.expand,
+      children: [_buildInAppWebView(context), SpinWaitDialog()],
     );
+    if (!modelLocal.initializing && _isFirstRun) {
+      stack.children.removeLast();
+      _isFirstRun = false;
+    }
+
+    return stack;
   }
 
   Widget _buildInAppWebView(BuildContext context,
@@ -428,10 +470,15 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
 
           // Inject JavaScript that will receive data back from Flutter
           _webViewController!.evaluateJavascript(source: js);
+          if (_isFirstRun) {
+            () async {
+              await Future.delayed(Duration(seconds: 1));
+              _lateModel.finishInitialization();
+            }();
+          }
         },
       ),
     );
-
     return retIawv;
   }
 
