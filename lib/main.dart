@@ -9,6 +9,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart' as iawv;
 import 'package:google_sign_in/google_sign_in.dart' as gapi;
 import 'package:flutter/services.dart';
 import 'package:fk_user_agent/fk_user_agent.dart';
+import 'package:nucleus_one_dart_sdk/nucleus_one_dart_sdk.dart';
 import 'package:nucleus_one_mobile/common/spin_wait_dialog.dart';
 import 'package:nucleus_one_mobile/shared_state/session.dart';
 import 'package:nucleus_one_mobile/theme.dart';
@@ -43,6 +44,7 @@ Future<void> _initialzeDependencies() async {
   Session.n1App = await n1_sdk.NucleusOne.initializeApp(
       options: n1_sdk.NucleusOneOptions(
     baseUrl: Session.ApiBaseUrl,
+    browserFingerprint: await _getDeviceBrowserFingerprint(),
   ));
 
   await Permission.camera.request();
@@ -53,6 +55,16 @@ Future<void> _initialzeDependencies() async {
   //   debug: true, // optional: set false to disable printing logs to console
   // );
   // FlutterDownloader.registerCallback(downloadCallback);
+}
+
+Future<int> _getDeviceBrowserFingerprint() async {
+  final prefs = _sl<Preferences>();
+  var browserFingerprint = prefs.deviceBrowserFingerprint;
+  if (browserFingerprint == null) {
+    browserFingerprint = Uuid().v4().hashCode;
+    await prefs.setDeviceBrowserFingerprint(browserFingerprint);
+  }
+  return browserFingerprint;
 }
 
 /*
@@ -144,9 +156,8 @@ class _SinglePageAppHostModel with ChangeNotifier {
             // print(googleKeyIdToken);
             // print(Session.googleSignIn.currentUser.displayName);
 
-            final browserFingerprint = await _getDeviceBrowserFingerprint();
             final authApi = Session.n1App!.auth();
-            final loginResult = await authApi.loginGoogle(browserFingerprint, googleKeyIdToken);
+            final loginResult = await authApi.loginGoogle(googleKeyIdToken);
             if (loginResult.success) {
               Session.n1SessionId = loginResult.sessionId!;
               Session.n1User = loginResult.user!;
@@ -194,16 +205,6 @@ class _SinglePageAppHostModel with ChangeNotifier {
         });
         break;
     }
-  }
-
-  Future<int> _getDeviceBrowserFingerprint() async {
-    final prefs = _sl<Preferences>();
-    var browserFingerprint = prefs.deviceBrowserFingerprint;
-    if (browserFingerprint == null) {
-      browserFingerprint = Uuid().v4().hashCode;
-      await prefs.setDeviceBrowserFingerprint(browserFingerprint);
-    }
-    return browserFingerprint;
   }
 }
 
@@ -507,6 +508,14 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
   }
 
   void _handleRouterLocationChangedEvent(String pathName) async {
+    if (Session.n1SessionId != null) {
+      final docs = Session.n1App!.documents();
+
+      final d = await docs.getThumbnailUrl('cJPpDks5ZfA0ncKX4duI');
+
+      print(d);
+    }
+
     switch (pathName) {
       case '/dashboard':
         if (!_model!.loggedIn) {
