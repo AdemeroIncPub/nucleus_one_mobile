@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:get_it/get_it.dart';
 import 'package:nucleus_one_dart_sdk/nucleus_one_dart_sdk.dart' as n1_sdk;
@@ -276,13 +277,22 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
   late _EmbededWebAppPageModel _lateModel;
   bool _isFirstRun = true;
 
+  // For iOS, this user agent is used instead of the default for the in-app webview because that
+  // user agent triggers a bug in said component.  See below for details.  When this issue is
+  // resolved, this workaround can be removed.
+  // https://github.com/pichillilorenzo/flutter_inappwebview/issues/1112
+  static const String _iosUserAgent =
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15';
+
   @override
   void initState() {
     super.initState();
     _lateModel = _EmbededWebAppPageModel();
     initUserAgentState();
     // TODO: Remove this before publishing
-    iawv.AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
+    if (Platform.isAndroid) {
+      iawv.AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
+    }
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
@@ -290,9 +300,9 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
     String userAgent, webViewUserAgent;
     // Platform messages may fail, so we use a try/catch PlatformException.
     try {
-      userAgent = await FkUserAgent.getPropertyAsync('userAgent');
+      userAgent = await _getUserAgent();
       await FkUserAgent.init();
-      webViewUserAgent = FkUserAgent.webViewUserAgent ?? '';
+      webViewUserAgent = _getWebViewUserAgent();
       print('''
   applicationVersion => ${FkUserAgent.getProperty('applicationVersion')}
   systemName         => ${FkUserAgent.getProperty('systemName')}
@@ -313,6 +323,14 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
       _userAgent = userAgent;
       _webUserAgent = webViewUserAgent;
     });
+  }
+
+  String _getWebViewUserAgent() {
+    return Platform.isIOS ? _iosUserAgent : (FkUserAgent.webViewUserAgent ?? '');
+  }
+
+  Future<dynamic> _getUserAgent() async {
+    return Platform.isIOS ? _iosUserAgent : await FkUserAgent.getPropertyAsync('userAgent');
   }
 
   @override
