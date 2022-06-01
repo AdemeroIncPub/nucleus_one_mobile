@@ -53,16 +53,24 @@ function listenForLoginEvents() {
   // root is the root of your React application
   const root = document.querySelector('#root');
 
-  _listenForLoginEventsListener = root.addEventListener('click', (e) => {
-    if ((e.target.tagName === 'SPAN') && (e.target.classList.contains('MuiButton-label'))) {
-      if (e.target.innerHTML.includes('Google')) {
-        e.stopPropagation();
-        // location.href = 'http://stackoverflow.com';
-
-        // Call Flutter JavaScript handler callback
-        window.flutter_inappwebview.callHandler('login_handleGoogleLogin', e.detail);
-      }
-    }
+  const signInGoogleReactBtn = document
+    .evaluate('//div[contains(@class, \'MuiGrid-item\') and //button//span[contains(@class, \'MuiButton-label\') and contains(.//text(), \'Google\')]]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null)
+    .singleNodeValue;
+  const signInGoogleReactBtnRect = signInGoogleReactBtn.getBoundingClientRect();
+  
+  let googleLoginOverlayBtn = document.createElement("div");
+  const btnStyle = googleLoginOverlayBtn.style;
+  btnStyle.backgroundColor = '#00000000';
+  btnStyle.position = 'absolute';
+  btnStyle.height = signInGoogleReactBtnRect.height + 'px';
+  btnStyle.left = '45px';
+  btnStyle.right = '45px';
+  btnStyle.zIndex = 999;
+  googleLoginOverlayBtn = signInGoogleReactBtn.parentElement.appendChild(googleLoginOverlayBtn);
+  
+  _listenForLoginEventsListener = googleLoginOverlayBtn.addEventListener('click', (e) => {
+    // Call Flutter JavaScript handler callback
+    window.flutter_inappwebview.callHandler('login_handleGoogleLogin', e.detail);
   });
 }
 
