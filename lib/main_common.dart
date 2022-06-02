@@ -98,7 +98,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Nucleus One',
       theme: n1AppTheme,
       home: _SinglePageAppHost(),
     );
@@ -302,8 +303,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
       userAgent = await _getUserAgent();
       await FkUserAgent.init();
       webViewUserAgent = _getWebViewUserAgent();
-      print(
-          '''
+      print('''
   applicationVersion => ${FkUserAgent.getProperty('applicationVersion')}
   systemName         => ${FkUserAgent.getProperty('systemName')}
   userAgent          => $userAgent
