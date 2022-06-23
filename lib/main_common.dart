@@ -611,7 +611,6 @@ class _WebPageLoadFailureState extends State<_WebPageLoadFailure> {
 
     return SizedBox.expand(
       child: Container(
-        //color: (Theme.of(context).primaryColor as MaterialColor)[900],
         child: Padding(
           padding: EdgeInsets.fromLTRB(
             20.0,
