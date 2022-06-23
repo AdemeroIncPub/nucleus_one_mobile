@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:get_it/get_it.dart';
 import 'package:nucleus_one_dart_sdk/nucleus_one_dart_sdk.dart' as n1_sdk;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 // import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' as iawv;
 import 'package:google_sign_in/google_sign_in.dart' as gapi;
@@ -48,8 +47,8 @@ Future<void> _initialzeDependencies(AppConfig appConfig) async {
   ));
 
   await Permission.camera.request();
-  await Permission.microphone.request();
   await Permission.storage.request();
+  await Permission.notification.request();
 
   // await FlutterDownloader.initialize(
   //   debug: true, // optional: set false to disable printing logs to console
@@ -121,6 +120,20 @@ class _SinglePageAppHostModel with ChangeNotifier {
   bool get initializing => _initializing;
   set initializing(bool value) {
     _initializing = value;
+    notifyListeners();
+  }
+
+  bool _inErrorState = false;
+  bool get inErrorState => _inErrorState;
+  set inErrorState(bool value) {
+    _inErrorState = value;
+    notifyListeners();
+  }
+
+  String _errorState = '';
+  String get errorState => _errorState;
+  set errorState(String value) {
+    _errorState = value;
     notifyListeners();
   }
 
@@ -244,6 +257,11 @@ class _SinglePageAppHostState extends State<_SinglePageAppHost> {
   Widget _buildSpaChild(BuildContext context) {
     final webAppPage = _EmbededWebAppPage();
     final modelLocal = context.watch<_SinglePageAppHostModel>();
+
+    if (modelLocal.inErrorState) {
+      return _WebPageLoadFailure();
+    }
+
     return modelLocal.initializing ? const SpinWaitDialog() : webAppPage;
   }
 }
@@ -271,7 +289,6 @@ class _EmbededWebAppPage extends StatefulWidget {
 }
 
 class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
-  String? _userAgent;
   String? _webUserAgent;
   _SinglePageAppHostModel? _model;
   late _EmbededWebAppPageModel _lateModel;
@@ -289,10 +306,10 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
     super.initState();
     _lateModel = _EmbededWebAppPageModel();
     initUserAgentState();
-    // TODO: Remove this before publishing
-    if (Platform.isAndroid) {
-      iawv.AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
-    }
+    // Remove this before publishing
+    // if (Platform.isAndroid) {
+    //   iawv.AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
+    // }
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
@@ -303,7 +320,8 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
       userAgent = await _getUserAgent();
       await FkUserAgent.init();
       webViewUserAgent = _getWebViewUserAgent();
-      print('''
+      print(
+          '''
   applicationVersion => ${FkUserAgent.getProperty('applicationVersion')}
   systemName         => ${FkUserAgent.getProperty('systemName')}
   userAgent          => $userAgent
@@ -320,7 +338,6 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
     if (!mounted) return;
 
     setState(() {
-      _userAgent = userAgent;
       _webUserAgent = webViewUserAgent;
     });
   }
@@ -471,7 +488,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           );
         },
         shouldOverrideUrlLoading: (controller, navAction) async {
-          final url = navAction.request.url;
+          // final url = navAction.request.url;
 
           // if (url?.path.endsWith('/login') == true) {
           //   setState(() {});
@@ -503,6 +520,16 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
               _lateModel.finishInitialization();
             }();
           }
+        },
+        onLoadError:
+            (iawv.InAppWebViewController controller, Uri? url, int code, String message) async {
+          _model!.errorState = "$code: $message";
+          _model!.inErrorState = true;
+        },
+        onLoadHttpError: (iawv.InAppWebViewController controller, Uri? url, int statusCode,
+            String description) async {
+          _model!.errorState = "$statusCode: $description";
+          _model!.inErrorState = true;
         },
       ),
     );
@@ -569,28 +596,53 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
   }
 }
 
-// class _LoggedOut extends StatefulWidget {
-//   @override
-//   _LoggedOutState createState() => _LoggedOutState();
-// }
+class _WebPageLoadFailure extends StatefulWidget {
+  const _WebPageLoadFailure({Key? key}) : super(key: key);
 
-// class _LoggedOutState extends State<_LoggedOut> {
-//   @override
-//   Widget build(BuildContext context) {
-//     return Center(
-//       child: Column(
-//         mainAxisAlignment: MainAxisAlignment.center,
-//         children: [
-//           Image.asset('assets/images/nucleusOne.png'),
-//           ElevatedButton(
-//             child: Text('SIGN IN'),
-//             onPressed: () {
-//               final model = context.read<_SinglePageAppHostModel>();
-//               model.reinitialize();
-//             },
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
+  @override
+  State<_WebPageLoadFailure> createState() => _WebPageLoadFailureState();
+}
+
+class _WebPageLoadFailureState extends State<_WebPageLoadFailure> {
+  @override
+  Widget build(BuildContext context) {
+    final model = context.read<_SinglePageAppHostModel>();
+    final mediaSize = MediaQuery.of(context).size;
+
+    return SizedBox.expand(
+      child: Container(
+        //color: (Theme.of(context).primaryColor as MaterialColor)[900],
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20.0,
+            mediaSize.height * 0.06,
+            20.0,
+            0.0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Image.asset('assets/images/nucleusOne.png'),
+              Padding(padding: EdgeInsets.only(bottom: 30)),
+              Text('There seems to be a problem...'),
+              Padding(padding: EdgeInsets.only(bottom: 30)),
+              Text(
+                model.errorState,
+                textAlign: TextAlign.center,
+              ),
+              Padding(padding: EdgeInsets.only(bottom: 30)),
+              Text('Retrying may resolve this issue.'),
+              TextButton(
+                child: const Text('RETRY'),
+                onPressed: () {
+                  model.errorState = '';
+                  model.inErrorState = false;
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

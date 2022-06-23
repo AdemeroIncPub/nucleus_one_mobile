@@ -1,48 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-ThemeData n1AppTheme = _buildLightTheme();
+ThemeData n1AppTheme = _buildDarkTheme();
 
 class _ThemeCommon {
-  static const MaterialColor primaryMaterialColor = MaterialColor(
+  static const MaterialColor primaryMaterialColor = const MaterialColor(
     _palettePrimaryValue,
-    <int, Color>{
-      50: Color(0xFFE5F5F4),
-      100: Color(0xFFBDE5E4),
-      200: Color(0xFF92D4D3),
-      300: Color(0xFF66C2C1),
-      400: Color(0xFF45B5B3),
+    const <int, Color>{
+      50: Color(0xff73839e),
+      100: Color(0xff697994),
+      200: Color(0xff606f8a),
+      300: Color(0xff576680),
+      400: Color(0xff4e5c76),
       500: Color(_palettePrimaryValue),
-      600: Color(0xFF20A09E),
-      700: Color(0xFF1B9795),
-      800: Color(0xFF168D8B),
-      900: Color(0xFF0D7D7B),
-    },
-  );
-  static const MaterialColor secondaryMaterialColor = MaterialColor(
-    _paletteSecondaryValue,
-    <int, Color>{
-      50: Color(0xFFE0EDEE),
-      100: Color(0xFFB3D2D4),
-      200: Color(0xFF80B4B8),
-      300: Color(0xFF4D969B),
-      400: Color(0xFF268085),
-      500: Color(_paletteSecondaryValue),
-      600: Color(0xFF006168),
-      700: Color(0xFF00565D),
-      800: Color(0xFF004C53),
-      900: Color(0xFF003B41),
+      600: Color(0xff3c4a63),
+      700: Color(0xff334159),
+      800: Color(0xff2b3850),
+      900: Color(0xff223047),
     },
   );
 
-  static const int _palettePrimaryValue = 0xff24a8a6;
-  static const int _paletteSecondaryValue = 0xff24a8a6;
+  static const int _palettePrimaryValue = 0xff45536c;
 
   // static const String fontFamily = 'Arial';
   static const accentColor = primaryMaterialColor;
   static const primaryColor = primaryMaterialColor;
   static const primarySwatch = primaryMaterialColor;
-  static const buttonColor = secondaryMaterialColor;
 
   static const iconTheme_color = Colors.white;
 
@@ -50,37 +32,31 @@ class _ThemeCommon {
   static const textTheme_title_fontWeight = FontWeight.w400;
 }
 
-class _ThemeLight {
-  static const primaryTextColor = const Color(0xff000000);
+class _ThemeDark {
+  static const primaryTextColor = Colors.white;
 }
 
-// class _ThemeDark {
-//   static const primaryTextColor = const Color(0xff24a8a6);
-//   static const decorationColor = primaryTextColor;
-// }
-
-ThemeData _buildLightTheme() {
+ThemeData _buildDarkTheme() {
   var baseTheme = ThemeData(
-      // fontFamily: _ThemeCommon.fontFamily,
-      // canvasColor: white,
-      disabledColor: _ThemeLight.primaryTextColor.withOpacity(0.35),
-      accentColor: _ThemeCommon.accentColor,
-      primaryColor: _ThemeCommon.primaryColor,
-      primarySwatch: _ThemeCommon.primarySwatch,
-      brightness: Brightness.light,
-      // selectedRowColor: _ThemeCommon.selectedRowColor,
-      buttonColor: _ThemeCommon.buttonColor,
-      // dividerColor: _ThemeLight.dividerColor,
-      primaryIconTheme: IconThemeData(color: _ThemeLight.primaryTextColor),
-      hintColor: _ThemeLight.primaryTextColor,
-      //dialogBackgroundColor: white,
-      );
+    // fontFamily: _ThemeCommon.fontFamily,
+    canvasColor: Color.fromARGB(0xFF, 0x25, 0x2e, 0x40),
+    disabledColor: _ThemeDark.primaryTextColor.withOpacity(0.35),
+    primaryColor: _ThemeCommon.primaryColor,
+    primarySwatch: _ThemeCommon.primarySwatch,
+    brightness: Brightness.light,
+    // selectedRowColor: _ThemeCommon.selectedRowColor,
+    // dividerColor: _ThemeLight.dividerColor,
+    primaryIconTheme: IconThemeData(color: _ThemeDark.primaryTextColor),
+    hintColor: _ThemeDark.primaryTextColor,
+    //dialogBackgroundColor: white,
+  );
 
   baseTheme = baseTheme.copyWith(
       textTheme: baseTheme.textTheme.apply(
-          bodyColor: _ThemeLight.primaryTextColor,
-          // decorationColor: _ThemeLight.decorationColor,
-          displayColor: _ThemeLight.primaryTextColor));
+    bodyColor: _ThemeDark.primaryTextColor,
+    // decorationColor: _ThemeLight.decorationColor,
+    displayColor: _ThemeDark.primaryTextColor,
+  ));
 
   baseTheme = baseTheme.copyWith(
       iconTheme: baseTheme.iconTheme.copyWith(color: _ThemeCommon.iconTheme_color),
@@ -88,7 +64,12 @@ ThemeData _buildLightTheme() {
           headline6: baseTheme.textTheme.headline6!.copyWith(
               // color: _ThemeCommon._getPurpleTextColor(true, false),
               fontSize: _ThemeCommon.textTheme_title_fontSize,
-              fontWeight: _ThemeCommon.textTheme_title_fontWeight)));
+              fontWeight: _ThemeCommon.textTheme_title_fontWeight)),
+      colorScheme: baseTheme.colorScheme.copyWith(secondary: _ThemeCommon.accentColor),
+      textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+        primary: Colors.white,
+      )));
 
   ThemeData ret = baseTheme;
 

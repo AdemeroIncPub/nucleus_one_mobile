@@ -15,6 +15,18 @@
                 "--target",
                 "lib/main_dev.dart"
             ]
+        },
+        {
+            "name": "Debug - Prod",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main_prod.dart",
+            "args": [
+                "--flavor",
+                "prod",
+                "--target",
+                "lib/main_prod.dart"
+            ]
         }
         // {
         //     "name": "Debug - Specific Unit Test",

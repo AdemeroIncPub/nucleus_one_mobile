@@ -26,8 +26,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Used for capturing documents</string>
-	<key>NSMicrophoneUsageDescription</key>
+	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Used for capturing documents</string>
+	<key>PermissionGroupNotification</key>
+	<string>Used for sending workflow and general notifications</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
