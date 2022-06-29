@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
 import 'package:nucleus_one_dart_sdk/nucleus_one_dart_sdk.dart' as n1_sdk;
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import 'package:nucleus_one_mobile/shared_state/app_config.dart';
 import 'package:nucleus_one_mobile/shared_state/session.dart';
 import 'package:nucleus_one_mobile/theme.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -46,14 +48,55 @@ Future<void> _initialzeDependencies(AppConfig appConfig) async {
     browserFingerprint: await _getDeviceBrowserFingerprint(),
   ));
 
-  await Permission.camera.request();
-  await Permission.storage.request();
-  await Permission.notification.request();
+  // The iOS-specific logic in these methods is needed because of an open bug in the main permission-
+  // requesting library, permission_handler.  Once this bug is fixed, this logic and the other
+  // permission libraries can be removed.
+  // While this bug only mentions issues with location permission requests, it manifests in other
+  // permission requests, as well, but only in release builds and only on iOS.
+  // https://github.com/Baseflow/flutter-permission-handler/issues/783
+  await _requestCameraPermissions();
+  await _requestStoragePermission();
+  await _requestNotificationPermissions();
 
   // await FlutterDownloader.initialize(
   //   debug: true, // optional: set false to disable printing logs to console
   // );
   // FlutterDownloader.registerCallback(downloadCallback);
+}
+
+Future<void> _requestStoragePermission() async {
+  await Permission.storage.request();
+}
+
+Future<void> _requestNotificationPermissions() async {
+  if (Platform.isIOS) {
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    final initializationSettingsIOS = IOSInitializationSettings(
+      requestSoundPermission: true,
+      requestBadgePermission: true,
+      requestAlertPermission: true,
+    );
+    final initializationSettingsMacOS = MacOSInitializationSettings(
+      requestSoundPermission: true,
+      requestBadgePermission: true,
+      requestAlertPermission: true,
+    );
+    final initializationSettings = InitializationSettings(
+      iOS: initializationSettingsIOS,
+      macOS: initializationSettingsMacOS,
+    );
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  } else {
+    await Permission.notification.request();
+  }
+}
+
+Future<void> _requestCameraPermissions() async {
+  if (Platform.isIOS) {
+    await PhotoManager.requestPermissionExtend();
+  } else {
+    await Permission.camera.request();
+  }
 }
 
 Future<int> _getDeviceBrowserFingerprint() async {
@@ -320,8 +363,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
       userAgent = await _getUserAgent();
       await FkUserAgent.init();
       webViewUserAgent = _getWebViewUserAgent();
-      print(
-          '''
+      print('''
   applicationVersion => ${FkUserAgent.getProperty('applicationVersion')}
   systemName         => ${FkUserAgent.getProperty('systemName')}
   userAgent          => $userAgent
