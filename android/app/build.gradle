@@ -1,3 +1,9 @@
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 def localProperties = new Properties()
 def localPropertiesFile = rootProject.file('local.properties')
 if (localPropertiesFile.exists()) {
@@ -32,21 +38,52 @@ android {
         main.java.srcDirs += 'src/main/kotlin'
     }
 
+    // Flavors allows for flavor specific directories during build.
+    // For example, src/dev/google-services.json can point to dev firebase settings
+    // while src/prod/google-serivces.json points to prod firebase settings
+    // flutter run --flavor dev
+    flavorDimensions 'environment'
+
+    productFlavors {
+        dev {
+            dimension 'environment'
+        }
+
+        prod {
+            dimension 'environment'
+        }
+    }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId "com.ademero.nucleus_one_mobile"
         minSdkVersion 21
-        targetSdkVersion 29
+        targetSdkVersion 30
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+        multiDexEnabled true
+    }
+
+    signingConfigs {
+        prodConfig {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig signingConfigs.debug
+            productFlavors.dev.signingConfig signingConfigs.debug
+            productFlavors.prod.signingConfig signingConfigs.prodConfig
+
+            minifyEnabled true
+
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            productFlavors.dev.signingConfig signingConfigs.debug
+            productFlavors.prod.signingConfig signingConfigs.prodConfig
         }
     }
     lint {
