@@ -44,7 +44,7 @@ Future<void> _initialzeDependencies(AppConfig appConfig) async {
   await n1_sdk.NucleusOne.intializeSdk();
   Session.n1App = await n1_sdk.NucleusOne.initializeApp(
       options: n1_sdk.NucleusOneOptions(
-    baseUrl: _sl<AppConfig>().apiBaseUrl,
+    baseUrl: appConfig.apiBaseUrl,
     browserFingerprint: await _getDeviceBrowserFingerprint(),
   ));
 
@@ -199,7 +199,9 @@ class _SinglePageAppHostModel with ChangeNotifier {
   void _initiateLoginAttempt(OnDeviceAccountAuthProvider loginWithOnDeviceAuthProvider) {
     switch (loginWithOnDeviceAuthProvider) {
       case OnDeviceAccountAuthProvider.google:
-        final gsi = Session.googleSignIn = gapi.GoogleSignIn();
+        final gsi = Session.googleSignIn = gapi.GoogleSignIn(
+          clientId: _sl<AppConfig>().googleSignInClientId,
+        );
         gsi.signIn().then((googleSignInAccount) {
           final gsia = Session.googleSignInAccount = googleSignInAccount!;
 
@@ -455,10 +457,14 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
             useHybridComposition: true,
           ),
           crossPlatform: iawv.InAppWebViewOptions(
-            userAgent: _webUserAgent!,
+            //userAgent: _webUserAgent!,
+            userAgent: 'random',
             javaScriptCanOpenWindowsAutomatically: true,
             useShouldOverrideUrlLoading: true,
             useOnDownloadStart: true,
+            javaScriptEnabled: true,
+            useOnLoadResource: true,
+            cacheEnabled: true,
           ),
         ),
         onCreateWindow: (controller, onCreateWindowRequest) async {
@@ -551,10 +557,11 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           // If Android, inject JavaScript that will override the default Google login button on the
           // Login page.  This enables us to use on-device account authentication, instead of the
           // user's browser's accounts.
-          if (Platform.isAndroid) {
-            final jsLogin = await rootBundle.loadString('assets/js/login.js');
-            _webViewController!.evaluateJavascript(source: jsLogin);
-          }
+          // TODO: Continue investigating why this works in one environment, but not the other
+          // if (Platform.isAndroid) {
+          //   final jsLogin = await rootBundle.loadString('assets/js/login.js');
+          //   _webViewController!.evaluateJavascript(source: jsLogin);
+          // }
 
           if (_isFirstRun) {
             () async {

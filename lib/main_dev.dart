@@ -10,6 +10,7 @@ void main() async {
     hostName: hostName,
     apiBaseUrl: 'https://client-api.$hostName',
     webAppBaseUrl: 'https://$hostName',
+    googleSignInClientId: '661248912206-8uo87nli6sdlbq077t8799qdlki8onqp.apps.googleusercontent.com',
   );
   await mainCommon(appConfig);
   runApp(MyApp());

@@ -13,14 +13,17 @@ class AppConfig {
     required this.hostName,
     required this.apiBaseUrl,
     required this.webAppBaseUrl,
+    required this.googleSignInClientId,
   })  : assert(!quiver_strings.isBlank(hostName)),
         assert(!quiver_strings.isBlank(apiBaseUrl)),
-        assert(!quiver_strings.isBlank(webAppBaseUrl));
+        assert(!quiver_strings.isBlank(webAppBaseUrl)),
+        assert(!quiver_strings.isBlank(googleSignInClientId));
 
   final Flavor flavor;
   final String hostName;
   final String apiBaseUrl;
   final String webAppBaseUrl;
+  final String googleSignInClientId;
 
   FlutterMode getFlutterMode() {
     /* https://github.com/flutter/flutter/issues/11392#issuecomment-317807633 */
