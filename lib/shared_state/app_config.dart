@@ -10,17 +10,17 @@ enum FlutterMode { debug, release, profile }
 class AppConfig {
   AppConfig({
     required this.flavor,
-    required this.hostName,
+    required this.topLevelDomain,
     required this.apiBaseUrl,
     required this.webAppBaseUrl,
     required this.googleSignInClientId,
-  })  : assert(!quiver_strings.isBlank(hostName)),
+  })  : assert(!quiver_strings.isBlank(topLevelDomain)),
         assert(!quiver_strings.isBlank(apiBaseUrl)),
         assert(!quiver_strings.isBlank(webAppBaseUrl)),
         assert(!quiver_strings.isBlank(googleSignInClientId));
 
   final Flavor flavor;
-  final String hostName;
+  final String topLevelDomain;
   final String apiBaseUrl;
   final String webAppBaseUrl;
   final String googleSignInClientId;

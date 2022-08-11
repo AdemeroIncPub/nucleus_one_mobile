@@ -153,7 +153,6 @@ enum OnDeviceAccountAuthProvider { google }
 class _SinglePageAppHostModel with ChangeNotifier {
   static final initialUrlAsString = _sl<AppConfig>().webAppBaseUrl;
   final initialUrl = Uri.parse(initialUrlAsString);
-  String get initialDomain => initialUrl.host;
 
   bool loggedIn = false;
   OnDeviceAccountAuthProvider? loggedInWithOnDeviceAcct;
@@ -222,27 +221,22 @@ class _SinglePageAppHostModel with ChangeNotifier {
               Session.n1User = loginResult.user!;
 
               {
-                final urlForCookie = Uri.parse(_sl<AppConfig>().webAppBaseUrl + '/');
-
+                final appConfig = _sl<AppConfig>();
+                final urlForCookie = Uri.parse(appConfig.topLevelDomain + '/');
                 final cookieManager = iawv.CookieManager.instance();
+                final expiresDate =
+                    DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch;
                 await cookieManager.setCookie(
-                    url: urlForCookie,
-                    name: 'G_ENABLED_IDPS',
-                    value: 'google',
-                    domain: initialDomain,
-                    isHttpOnly: false);
-                await cookieManager.setCookie(
-                    url: urlForCookie,
-                    name: 'G_AUTHUSER_H',
-                    value: '1',
-                    domain: initialDomain,
-                    isHttpOnly: false);
-                await cookieManager.setCookie(
-                    url: urlForCookie,
-                    name: 'session_v1',
-                    value: Session.n1SessionId!,
-                    domain: initialDomain,
-                    isHttpOnly: false);
+                  url: urlForCookie,
+                  name: 'session_v1',
+                  value: Session.n1SessionId!,
+                  domain: appConfig.topLevelDomain,
+                  path: '/',
+                  expiresDate: expiresDate,
+                  sameSite: iawv.HTTPCookieSameSitePolicy.LAX,
+                  isHttpOnly: false,
+                  isSecure: appConfig.flavor == Flavor.prod,
+                );
               }
 
               loggedIn = true;
@@ -550,6 +544,9 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           print(consoleMessage.message);
         },
         onLoadStop: (iawv.InAppWebViewController controller, Uri? url) async {
+          if (!_isFirstRun) {
+            return;
+          }
           final jsCore = await rootBundle.loadString('assets/js/core.js');
           // Inject JavaScript that will receive data back from Flutter
           _webViewController!.evaluateJavascript(source: jsCore);
@@ -557,18 +554,21 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           // If Android, inject JavaScript that will override the default Google login button on the
           // Login page.  This enables us to use on-device account authentication, instead of the
           // user's browser's accounts.
-          // TODO: Continue investigating why this works in one environment, but not the other
-          // if (Platform.isAndroid) {
-          //   final jsLogin = await rootBundle.loadString('assets/js/login.js');
-          //   _webViewController!.evaluateJavascript(source: jsLogin);
-          // }
-
-          if (_isFirstRun) {
-            () async {
-              await Future.delayed(Duration(seconds: 1));
-              _lateModel.finishInitialization();
-            }();
+          if (Platform.isAndroid) {
+            final jsLogin = await rootBundle.loadString('assets/js/login.js');
+            _webViewController!.evaluateJavascript(source: jsLogin);
+          } else if (Platform.isIOS) {
+            // Apple does not permit an app to offer in-app purchases, including subscriptions,
+            // without said purchase being routed though Apple's in-app-purchase platform.  So,
+            // just hide the relevant controls in the mobile app for iOS only.
+            final jsSubscription = await rootBundle.loadString('assets/js/subscription.js');
+            _webViewController!.evaluateJavascript(source: jsSubscription);
           }
+
+          () async {
+            await Future.delayed(Duration(seconds: 1));
+            _lateModel.finishInitialization();
+          }();
         },
         onLoadError:
             (iawv.InAppWebViewController controller, Uri? url, int code, String message) async {
