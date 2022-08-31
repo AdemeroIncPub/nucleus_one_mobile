@@ -11,6 +11,7 @@ import 'package:google_sign_in/google_sign_in.dart' as gapi;
 import 'package:flutter/services.dart';
 import 'package:fk_user_agent/fk_user_agent.dart';
 import 'package:nucleus_one_mobile/common/spin_wait_dialog.dart';
+import 'package:nucleus_one_mobile/logging.dart';
 import 'package:nucleus_one_mobile/shared_state/app_config.dart';
 import 'package:nucleus_one_mobile/shared_state/session.dart';
 import 'package:nucleus_one_mobile/theme.dart';
@@ -540,8 +541,16 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
         },
         onConsoleMessage:
             (iawv.InAppWebViewController controller, iawv.ConsoleMessage consoleMessage) {
+          final msg = 'N1 Session: ' +
+              (Session.n1SessionId ?? '') +
+              ', ' +
+              consoleMessage.messageLevel.toString() +
+              ' ' +
+              consoleMessage.message;
+
           print('----------------------------------------------------------------------------');
-          print(consoleMessage.message);
+          print(msg);
+          // Logging.log(msg);
         },
         onLoadStop: (iawv.InAppWebViewController controller, Uri? url) async {
           if (!_isFirstRun) {
