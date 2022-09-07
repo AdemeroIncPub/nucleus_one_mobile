@@ -201,7 +201,9 @@ class _SinglePageAppHostModel with ChangeNotifier {
       case OnDeviceAccountAuthProvider.google:
         final gsi = Session.googleSignIn = gapi.GoogleSignIn(
           clientId: _sl<AppConfig>().googleSignInClientId,
+          serverClientId: _sl<AppConfig>().googleSignInServerClientId,
         );
+        
         gsi.signIn().then((googleSignInAccount) {
           final gsia = Session.googleSignInAccount = googleSignInAccount!;
 
@@ -223,7 +225,7 @@ class _SinglePageAppHostModel with ChangeNotifier {
 
               {
                 final appConfig = _sl<AppConfig>();
-                final urlForCookie = Uri.parse(appConfig.topLevelDomain + '/');
+                final urlForCookie = Uri.parse('https://' + appConfig.topLevelDomain);
                 final cookieManager = iawv.CookieManager.instance();
                 final expiresDate =
                     DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch;

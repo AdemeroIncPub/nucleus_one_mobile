@@ -14,16 +14,21 @@ class AppConfig {
     required this.apiBaseUrl,
     required this.webAppBaseUrl,
     required this.googleSignInClientId,
+    required this.googleSignInServerClientId,
   })  : assert(!quiver_strings.isBlank(topLevelDomain)),
         assert(!quiver_strings.isBlank(apiBaseUrl)),
         assert(!quiver_strings.isBlank(webAppBaseUrl)),
-        assert(!quiver_strings.isBlank(googleSignInClientId));
+        assert(!quiver_strings.isBlank(googleSignInClientId)),
+        assert(!quiver_strings.isBlank(googleSignInServerClientId));
 
   final Flavor flavor;
   final String topLevelDomain;
   final String apiBaseUrl;
   final String webAppBaseUrl;
+  /// Also known as the "Web application" Client ID in Google Cloud Console's Credentials configuration.
   final String googleSignInClientId;
+  /// Also known as the "Android" Client ID in Google Cloud Console's Credentials configuration.
+  final String googleSignInServerClientId;
 
   FlutterMode getFlutterMode() {
     /* https://github.com/flutter/flutter/issues/11392#issuecomment-317807633 */

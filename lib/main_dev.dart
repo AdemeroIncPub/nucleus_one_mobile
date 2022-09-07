@@ -11,6 +11,7 @@ void main() async {
     apiBaseUrl: 'https://client-api.$topLevelDomain',
     webAppBaseUrl: 'https://$topLevelDomain',
     googleSignInClientId: '661248912206-8uo87nli6sdlbq077t8799qdlki8onqp.apps.googleusercontent.com',
+    googleSignInServerClientId: '661248912206-up7s5rv3hthlu41e8kuga9u2ld3apndb.apps.googleusercontent.com',
   );
   await mainCommon(appConfig);
   runApp(MyApp());
