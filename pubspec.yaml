@@ -18,7 +18,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.5
 
 environment:
-  sdk: '>=2.12.0 <3.0.0'  # Related to Dart null safety, see https://github.com/dart-lang/sdk/issues/44072
+  sdk: '>=2.15.0 <3.0.0'  # Related to Dart null safety, see https://github.com/dart-lang/sdk/issues/44072
 
 dependencies:
   flutter:
@@ -28,27 +28,27 @@ dependencies:
     path: ../nucleus_one_dart_sdk
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.3
-  google_sign_in: ^5.4.0
+  cupertino_icons: ^1.0.5
   fk_user_agent: ^2.1.0
-  # flutter_downloader: ^1.6.0
-  flutter_inappwebview: ^5.4.3+7
-  get_it: ^6.1.1
+  flutter_downloader: ^1.10.1
+  flutter_inappwebview: ^5.7.2+3
+  flutter_local_notifications: ^13.0.0
+  get_it: ^7.2.0
+  google_sign_in: ^5.4.3
+  meta: ^1.8.0
   path_provider: ^2.0.1
-  permission_handler: ^9.2.0
+  permission_handler: ^10.2.0
+  photo_manager: ^2.5.2
   provider: ^6.0.3
+  quiver: ^3.2.1
   shared_preferences: ^2.0.5
-  url_launcher: ^6.0.3
+  url_launcher: ^6.1.7
   uuid: ^3.0.4
-  # webview_cookie_manager: ^1.0.5
-  # webview_flutter: ^1.0.7
-  flutter_local_notifications: ^9.6.1
-  photo_manager: ^2.1.4
-  http: ^0.13.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  dependency_validator: ^3.2.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -66,6 +66,7 @@ flutter:
     - assets/images/nucleusOne.png
     - assets/js/core.js
     - assets/js/login.js
+    - assets/js/projects_departments.js
     - assets/js/subscription.js
 
   # An image asset can refer to one or more resolution-specific "variants", see

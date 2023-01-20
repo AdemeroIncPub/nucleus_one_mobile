@@ -68,7 +68,7 @@ ThemeData _buildDarkTheme() {
       colorScheme: baseTheme.colorScheme.copyWith(secondary: _ThemeCommon.accentColor),
       textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-        primary: Colors.white,
+        foregroundColor: Colors.white,
       )));
 
   ThemeData ret = baseTheme;

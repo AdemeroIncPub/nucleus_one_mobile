@@ -1,23 +1,26 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get_it/get_it.dart';
 import 'package:nucleus_one_dart_sdk/nucleus_one_dart_sdk.dart' as n1_sdk;
 import 'package:flutter/material.dart';
-// import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' as iawv;
 import 'package:google_sign_in/google_sign_in.dart' as gapi;
 import 'package:flutter/services.dart';
 import 'package:fk_user_agent/fk_user_agent.dart';
+import 'package:nucleus_one_dart_sdk/nucleus_one_dart_sdk.dart';
 import 'package:nucleus_one_mobile/common/spin_wait_dialog.dart';
-import 'package:nucleus_one_mobile/logging.dart';
 import 'package:nucleus_one_mobile/shared_state/app_config.dart';
 import 'package:nucleus_one_mobile/shared_state/session.dart';
 import 'package:nucleus_one_mobile/theme.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 import 'service_locator.dart';
@@ -32,22 +35,19 @@ Future<void> mainCommon(AppConfig appConfig) {
   // _forceDebugProxy();
 }
 
-// void downloadCallback(String id, DownloadTaskStatus status, int progress) {
-//   /*if (debug)*/ {
-//     print('Background Isolate Callback: task ($id) is in status ($status) and process ($progress)');
-//   }
-//   final send = IsolateNameServer.lookupPortByName('downloader_send_port')!;
-//   send.send([id, status, progress]);
-// }
+void downloadCallback(String id, DownloadTaskStatus status, int progress) {
+  final send = IsolateNameServer.lookupPortByName('downloader_send_port')!;
+  send.send([id, status, progress]);
+}
 
 Future<void> _initialzeDependencies(AppConfig appConfig) async {
   await initializeServiceLocator(appConfig);
-  await n1_sdk.NucleusOne.intializeSdk();
-  Session.n1App = await n1_sdk.NucleusOne.initializeApp(
+  await n1_sdk.NucleusOne.initializeSdk();
+  Session.n1App = n1_sdk.NucleusOneApp(
       options: n1_sdk.NucleusOneOptions(
-    baseUrl: appConfig.apiBaseUrl,
-    browserFingerprint: await _getDeviceBrowserFingerprint(),
+    apiBaseUrl: appConfig.apiBaseUrl,
   ));
+  Session.browserFingerprint = await _getDeviceBrowserFingerprint();
 
   // The iOS-specific logic in these methods is needed because of an open bug in the main permission-
   // requesting library, permission_handler.  Once this bug is fixed, this logic and the other
@@ -59,10 +59,11 @@ Future<void> _initialzeDependencies(AppConfig appConfig) async {
   await _requestStoragePermission();
   await _requestNotificationPermissions();
 
-  // await FlutterDownloader.initialize(
-  //   debug: true, // optional: set false to disable printing logs to console
-  // );
-  // FlutterDownloader.registerCallback(downloadCallback);
+  await FlutterDownloader.initialize(
+      debug: true, // optional: set to false to disable printing logs to console (default: true)
+      ignoreSsl: true // option: set to false to disable working with http links (default: false)
+      );
+  await FlutterDownloader.registerCallback(downloadCallback);
 }
 
 Future<void> _requestStoragePermission() async {
@@ -72,12 +73,12 @@ Future<void> _requestStoragePermission() async {
 Future<void> _requestNotificationPermissions() async {
   if (Platform.isIOS) {
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    final initializationSettingsIOS = IOSInitializationSettings(
+    final initializationSettingsIOS = DarwinInitializationSettings(
       requestSoundPermission: true,
       requestBadgePermission: true,
       requestAlertPermission: true,
     );
-    final initializationSettingsMacOS = MacOSInitializationSettings(
+    final initializationSettingsMacOS = DarwinInitializationSettings(
       requestSoundPermission: true,
       requestBadgePermission: true,
       requestAlertPermission: true,
@@ -203,7 +204,7 @@ class _SinglePageAppHostModel with ChangeNotifier {
           clientId: _sl<AppConfig>().googleSignInClientId,
           serverClientId: _sl<AppConfig>().googleSignInServerClientId,
         );
-        
+
         gsi.signIn().then((googleSignInAccount) {
           final gsia = Session.googleSignInAccount = googleSignInAccount!;
 
@@ -217,8 +218,10 @@ class _SinglePageAppHostModel with ChangeNotifier {
             // print(googleKeyIdToken);
             // print(Session.googleSignIn.currentUser.displayName);
 
-            final authApi = Session.n1App!.auth();
-            final loginResult = await authApi.loginGoogle(googleKeyIdToken);
+            final loginResult = await Session.n1App!.user().loginGoogle(
+                  oauthIdToken: googleKeyIdToken,
+                  browserFingerprint: Session.browserFingerprint!,
+                );
             if (loginResult.success) {
               Session.n1SessionId = loginResult.sessionId!;
               Session.n1User = loginResult.user!;
@@ -348,10 +351,10 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
     super.initState();
     _lateModel = _EmbededWebAppPageModel();
     initUserAgentState();
-    // Remove this before publishing
-    // if (Platform.isAndroid) {
-    //   iawv.AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
-    // }
+
+    if (Platform.isAndroid) {
+      iawv.AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
+    }
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
@@ -384,7 +387,10 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
   }
 
   String _getWebViewUserAgent() {
-    return Platform.isIOS ? _iosUserAgent : (FkUserAgent.webViewUserAgent ?? '');
+    return Platform.isIOS
+        ? _iosUserAgent
+        : 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1';
+    //: (FkUserAgent.webViewUserAgent ?? '');
   }
 
   Future<dynamic> _getUserAgent() async {
@@ -414,7 +420,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
     final modelLocal = context.watch<_EmbededWebAppPageModel>();
     final stack = Stack(
       fit: StackFit.expand,
-      children: [_buildInAppWebView(context), SpinWaitDialog()],
+      children: [_buildInAppWebView(context, null, false), SpinWaitDialog()],
     );
     if (!modelLocal.initializing) {
       stack.children.removeLast();
@@ -424,14 +430,20 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
     return stack;
   }
 
-  Widget _buildInAppWebView(BuildContext context,
-      [iawv.CreateWindowAction? onCreateWindowRequest]) {
+  Widget _buildInAppWebView(
+    BuildContext context, [
+    iawv.CreateWindowAction? onCreateWindowRequest,
+    bool isExternalLink = false,
+  ]) {
     final model = _model = context.read<_SinglePageAppHostModel>();
     final isChildWindow = (onCreateWindowRequest != null);
     iawv.InAppWebViewController? _webViewController;
 
     final retIawv = WillPopScope(
       onWillPop: () async {
+        if (_webViewController == null) {
+          return false;
+        }
         final wvc = _webViewController!;
         if (await wvc.canGoBack()) {
           // Get the webview history
@@ -444,10 +456,22 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
         return true;
       },
       child: iawv.InAppWebView(
+        onDownloadStartRequest: (controller, downloadStartRequest) async {
+          final externalDir = await getExternalStorageDirectory();
+          await FlutterDownloader.enqueue(
+            url: downloadStartRequest.url.toString(),
+            headers: {}, // optional: header send with url (auth token etc)
+            savedDir: externalDir!.path,
+            saveInPublicStorage: true,
+            showNotification: true, // show download progress in status bar (for Android)
+            openFileFromNotification:
+                true, // click on notification to open downloaded file (for Android)
+          );
+        },
         // Setting the windowId property is important here!
         windowId: onCreateWindowRequest?.windowId,
         initialUrlRequest:
-            isChildWindow ? onCreateWindowRequest!.request : _buildURLRequest(model.initialUrl),
+            isChildWindow ? onCreateWindowRequest.request : _buildURLRequest(model.initialUrl),
         initialOptions: iawv.InAppWebViewGroupOptions(
           android: iawv.AndroidInAppWebViewOptions(
             supportMultipleWindows: true,
@@ -455,7 +479,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           ),
           crossPlatform: iawv.InAppWebViewOptions(
             //userAgent: _webUserAgent!,
-            userAgent: 'random',
+            userAgent: _webUserAgent!,
             javaScriptCanOpenWindowsAutomatically: true,
             useShouldOverrideUrlLoading: true,
             useOnDownloadStart: true,
@@ -465,15 +489,28 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           ),
         ),
         onCreateWindow: (controller, onCreateWindowRequest) async {
+          final currentUrl = await controller.getUrl();
+          final openInExternalBrowser = !currentUrl!.path.startsWith('/login');
+
           showDialog(
             context: context,
             builder: (_) {
-              return Container(
+              final iawvChild = Container(
                   child: Column(children: <Widget>[
                 Expanded(
-                  child: _buildInAppWebView(context, onCreateWindowRequest),
+                  child: _buildInAppWebView(context, onCreateWindowRequest, openInExternalBrowser),
                 )
               ]));
+
+              if (openInExternalBrowser) {
+                // Draw the web view off screen
+                return Transform.translate(
+                  offset: Offset(MediaQuery.of(context).size.width, 0),
+                  child: iawvChild,
+                );
+              }
+
+              return iawvChild;
             },
           );
 
@@ -488,57 +525,18 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           _webViewController = controller;
           _initializeWebViewController(_webViewController!);
         },
-        onDownloadStart: (controller, url) async {
-          // final urlString = url.toString();
-
-          // print("onDownloadStart $url");
-
-          // final downloadLocation = await getExternalStorageDirectory();
-
-          // if (downloadLocation == null) {
-          //   return;
-          // }
-
-          // final taskId = await FlutterDownloader.enqueue(
-          //   url: url.toString(),
-          //   savedDir: downloadLocation.path,
-          // );
-
-          // if (await canLaunch(urlString)) {
-          //   await launch(urlString);
-          //   return;
-          // }
-
-          // TODO: Revisit this when the following issue is addressed
-          // https://github.com/fluttercommunity/flutter_downloader/issues/466
-          showDialog<void>(
-            context: context,
-            barrierDismissible: true,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Error'),
-                content: SingleChildScrollView(
-                  child: Text('This feature is currently under development.'),
-                ),
-                actions: <Widget>[
-                  TextButton(
-                    child: const Text('OK'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              );
-            },
-          );
-        },
         shouldOverrideUrlLoading: (controller, navAction) async {
-          // final url = navAction.request.url;
+          if (isExternalLink) {
+            launchUrl(
+              navAction.request.url!,
+              mode: LaunchMode.externalApplication,
+            );
 
-          // if (url?.path.endsWith('/login') == true) {
-          //   setState(() {});
-          //   return iawv.NavigationActionPolicy.CANCEL;
-          // }
+            Navigator.of(context).pop();
+
+            return iawv.NavigationActionPolicy.CANCEL;
+          }
+
           return iawv.NavigationActionPolicy.ALLOW;
         },
         onConsoleMessage:
@@ -560,7 +558,10 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
           }
           final jsCore = await rootBundle.loadString('assets/js/core.js');
           // Inject JavaScript that will receive data back from Flutter
-          _webViewController!.evaluateJavascript(source: jsCore);
+          await _webViewController!.evaluateJavascript(source: jsCore);
+
+          final jsProjects = await rootBundle.loadString('assets/js/projects_departments.js');
+          await _webViewController!.evaluateJavascript(source: jsProjects);
 
           // If Android, inject JavaScript that will override the default Google login button on the
           // Login page.  This enables us to use on-device account authentication, instead of the
@@ -634,8 +635,8 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
             return;
           }
 
-          final r = Session.n1App!.auth().reestablishExistingSession(sessionId);
-          Session.n1SessionId = sessionId;
+          final r = new _Auth(app: Session.n1App!).reestablishExistingSession(sessionId);
+          Session.setAuthenticationState(sessionId);
           Session.n1User = r.user;
           _model!.loggedIn = true;
         }
@@ -702,6 +703,27 @@ class _WebPageLoadFailureState extends State<_WebPageLoadFailure> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _Auth {
+  NucleusOneApp app;
+
+  _Auth({
+    required this.app,
+  });
+
+  /// Reestablishes the authentication state to be with the provided auth provider and session id.
+  ///
+  /// [sessionId]: An existing session id with the authentication provider.
+  LoginResult reestablishExistingSession(String sessionId) {
+    Session.setAuthenticationState(sessionId);
+
+    return LoginResult(
+      success: true,
+      sessionId: sessionId,
+      user: User(app: app),
     );
   }
 }

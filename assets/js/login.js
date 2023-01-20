@@ -1,11 +1,3 @@
-function listenToRouterLocationChanged() {
-  addEventListener('routerLocationChanged', async function (e) {
-    _handleListeningOnCurrentPage(e.detail.pathname);
-  }, false);
-  
-  _handleListeningOnCurrentPage(location.pathname);
-}
-  
 function _handleListeningOnCurrentPage(urlPath) {
   console.log('_handleListeningOnCurrentPage: ' + urlPath);
   if (urlPath === '/login') {
@@ -15,7 +7,7 @@ function _handleListeningOnCurrentPage(urlPath) {
   }
 }
 
-listenToRouterLocationChanged();
+listenToRouterLocationChanged(_handleListeningOnCurrentPage);
 
 var _listenForLoginEventsListener;
 
@@ -24,10 +16,16 @@ function listenForLoginEvents() {
   const root = document.querySelector('#root');
 
   const signInGoogleReactBtn = document
-    .evaluate('//div[contains(@class, \'MuiGrid-item\') and //button//span[contains(@class, \'MuiButton-label\') and contains(.//text(), \'Google\')]]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null)
+    .evaluate('//div[contains(@class, \'MuiGrid-item\') and .//iframe[contains(@src, \'.google.com\')]]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null)
     .singleNodeValue;
+
+  if (!signInGoogleReactBtn) {
+    console.log('Unable to find Google Sign-In button');
+    return;
+  }
+
   const signInGoogleReactBtnRect = signInGoogleReactBtn.getBoundingClientRect();
-  
+
   let googleLoginOverlayBtn = document.createElement("div");
   const btnStyle = googleLoginOverlayBtn.style;
   btnStyle.backgroundColor = '#00000000';
@@ -37,7 +35,7 @@ function listenForLoginEvents() {
   btnStyle.right = '45px';
   btnStyle.zIndex = 999;
   googleLoginOverlayBtn = signInGoogleReactBtn.parentElement.appendChild(googleLoginOverlayBtn);
-  
+
   _listenForLoginEventsListener = googleLoginOverlayBtn.addEventListener('click', (e) => {
     // Call Flutter JavaScript handler callback
     window.flutter_inappwebview.callHandler('login_handleGoogleLogin', e.detail);

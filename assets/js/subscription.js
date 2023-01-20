@@ -1,13 +1,4 @@
-function listenToRouterLocationChanged() {
-  addEventListener('routerLocationChanged', async function (e) {
-    _handleListeningOnCurrentPage(e.detail.pathname);
-  }, false);
-  
-  _handleListeningOnCurrentPage(location.pathname);
-}
-  
 function _handleListeningOnCurrentPage(urlPath) {
-  console.log('_handleListeningOnCurrentPage: ' + urlPath);
   if (urlPath === '/home') {
     hideSubscriptionButtonOnHome();
   } else if (urlPath.startsWith('/organizationManagement/') && urlPath.endsWith('/members')) {
@@ -15,7 +6,7 @@ function _handleListeningOnCurrentPage(urlPath) {
   }
 }
 
-listenToRouterLocationChanged();
+listenToRouterLocationChanged(_handleListeningOnCurrentPage);
 
 function hideSubscriptionButtonOnHome() {
   const subscriptionReactBtn = document
