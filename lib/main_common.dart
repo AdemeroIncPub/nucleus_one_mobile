@@ -202,15 +202,15 @@ class _SinglePageAppHostModel with ChangeNotifier {
       case OnDeviceAccountAuthProvider.google:
         final gsi = Session.googleSignIn = gapi.GoogleSignIn(
           clientId: _sl<AppConfig>().googleSignInClientId,
-          serverClientId: _sl<AppConfig>().googleSignInServerClientId,
+          // serverClientId: _sl<AppConfig>().googleSignInServerClientId,
         );
 
         gsi.signIn().then((googleSignInAccount) {
           final gsia = Session.googleSignInAccount = googleSignInAccount!;
 
           gsia.authentication.then((googleKey) async {
-            final googleKeyIdToken = googleKey.idToken;
-            if (googleKeyIdToken == null) {
+            final googleKeyToken = googleKey.idToken ?? googleKey.accessToken;
+            if (googleKeyToken == null) {
               throw StateError('Unable to obtain Google sign-in token.');
             }
 
@@ -219,7 +219,7 @@ class _SinglePageAppHostModel with ChangeNotifier {
             // print(Session.googleSignIn.currentUser.displayName);
 
             final loginResult = await Session.n1App!.user().loginGoogle(
-                  oauthIdToken: googleKeyIdToken,
+                  oauthIdToken: googleKeyToken,
                   browserFingerprint: Session.browserFingerprint!,
                 );
             if (loginResult.success) {
