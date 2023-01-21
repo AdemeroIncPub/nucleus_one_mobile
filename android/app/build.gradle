@@ -58,7 +58,7 @@ android {
         applicationId "com.ademero.nucleus_one_mobile"
         minSdkVersion 21
         targetSdkVersion 31
-        versionCode 7 //flutterVersionCode.toInteger()
+        versionCode 8 //flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
     }
