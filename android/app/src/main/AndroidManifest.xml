@@ -49,7 +49,19 @@
         
         <!-- This is needed for capturing files from a device.  Without it, the following error occurs.
                 "java.lang.IllegalArgumentException: Couldn't find meta-data for provider with authority com.ademero.nucleus_one_mobile.flutter_inappwebview.fileprovider"
+             See the following issue for details.
+             https://github.com/fluttercommunity/flutter_webview_plugin/issues/592
         -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.flutter_inappwebview.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
+        <!-- This is needed for downlading files via the flutter_downloader package -->
         <provider
             android:name="vn.hunghd.flutterdownloader.DownloadedFileProvider"
             android:authorities="${applicationId}.flutter_downloader.provider"
@@ -59,16 +71,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths"/>
         </provider>
-
-        <!-- This is needed for downlading files via the flutter_downloader package -->
-        <!-- <provider
-            android:name="vn.hunghd.flutterdownloader.DownloadedFileProvider"
-            android:authorities="${applicationId}.flutter_downloader.provider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/provider_paths"/>
-        </provider> -->
     </application>
 </manifest>

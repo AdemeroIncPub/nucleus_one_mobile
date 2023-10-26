@@ -30,9 +30,10 @@ function listenForLoginEvents() {
   const btnStyle = googleLoginOverlayBtn.style;
   btnStyle.backgroundColor = '#00000000';
   btnStyle.position = 'absolute';
+  btnStyle.top = signInGoogleReactBtnRect.top + 'px';
   btnStyle.height = signInGoogleReactBtnRect.height + 'px';
-  btnStyle.left = '45px';
-  btnStyle.right = '45px';
+  btnStyle.left = signInGoogleReactBtnRect.left + 'px';
+  btnStyle.width = signInGoogleReactBtnRect.width + 'px';
   btnStyle.zIndex = 999;
   googleLoginOverlayBtn = signInGoogleReactBtn.parentElement.appendChild(googleLoginOverlayBtn);
 

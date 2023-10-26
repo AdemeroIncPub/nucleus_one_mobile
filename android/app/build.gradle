@@ -57,8 +57,8 @@ android {
     defaultConfig {
         applicationId "com.ademero.nucleus_one_mobile"
         minSdkVersion 21
-        targetSdkVersion 31
-        versionCode 8 //flutterVersionCode.toInteger()
+        targetSdkVersion 33
+        versionCode 9 //flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
     }

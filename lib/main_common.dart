@@ -35,7 +35,7 @@ Future<void> mainCommon(AppConfig appConfig) {
   // _forceDebugProxy();
 }
 
-void downloadCallback(String id, DownloadTaskStatus status, int progress) {
+void downloadCallback(String id, int status, int progress) {
   final send = IsolateNameServer.lookupPortByName('downloader_send_port')!;
   send.send([id, status, progress]);
 }
