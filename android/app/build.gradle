@@ -1,103 +1,106 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
 def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file('key.properties')
+def keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
 def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
+def localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader('UTF-8') { reader ->
+    localPropertiesFile.withReader("UTF-8") { reader ->
         localProperties.load(reader)
     }
 }
 
-def flutterRoot = localProperties.getProperty('flutter.sdk')
-if (flutterRoot == null) {
-    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
-}
-
-def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
 if (flutterVersionCode == null) {
-    flutterVersionCode = '1'
+    flutterVersionCode = "1"
 }
 
-def flutterVersionName = localProperties.getProperty('flutter.versionName')
+def flutterVersionName = localProperties.getProperty("flutter.versionName")
 if (flutterVersionName == null) {
-    flutterVersionName = '1.0'
+    flutterVersionName = "1.0"
 }
-
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
-    compileSdkVersion 33
+    namespace = "com.ademero.nucleus_one_mobile"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
 
     sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
+        main.java.srcDirs += "src/main/kotlin"
     }
 
     // Flavors allows for flavor specific directories during build.
     // For example, src/dev/google-services.json can point to dev firebase settings
     // while src/prod/google-serivces.json points to prod firebase settings
     // flutter run --flavor dev
-    flavorDimensions 'environment'
-
+    flavorDimensions "environment"
+    
     productFlavors {
         dev {
-            dimension 'environment'
+            dimension = "environment"
         }
 
         prod {
-            dimension 'environment'
+            dimension = "environment"
         }
     }
 
     defaultConfig {
-        applicationId "com.ademero.nucleus_one_mobile"
-        minSdkVersion 21
-        targetSdkVersion 33
-        versionCode 9 //flutterVersionCode.toInteger()
-        versionName flutterVersionName
-        multiDexEnabled true
+        applicationId = "com.ademero.nucleus_one_mobile"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = 10 //flutterVersionCode.toInteger()
+        versionName = flutterVersionName
     }
 
     signingConfigs {
         prodConfig {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
+            keyAlias = keystoreProperties["keyAlias"]
+            keyPassword = keystoreProperties["keyPassword"]
+            storeFile = file(keystoreProperties["storeFile"])
+            storePassword = keystoreProperties["storePassword"]
         }
     }
 
     buildTypes {
         release {
-            productFlavors.dev.signingConfig signingConfigs.debug
-            productFlavors.prod.signingConfig signingConfigs.prodConfig
+            productFlavors.dev.signingConfig = signingConfigs.debug
+            productFlavors.prod.signingConfig = signingConfigs.prodConfig
 
-            minifyEnabled true
+            minifyEnabled = true
+            shrinkResources = true
 
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
         debug {
-            productFlavors.dev.signingConfig signingConfigs.debug
-            productFlavors.prod.signingConfig signingConfigs.prodConfig
+            productFlavors.dev.signingConfig = signingConfigs.debug
+            productFlavors.prod.signingConfig = signingConfigs.prodConfig
         }
-    }
-    lint {
-        disable 'InvalidPackage'
     }
 }
 
 flutter {
-    source '../..'
+    source = "../.."
 }
 
-dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    // Needed to resolve error "Duplicate class com.google.common.util.concurrent.ListenableFuture"
-    // https://stackoverflow.com/a/60492942
-    implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
-}
+dependencies {}

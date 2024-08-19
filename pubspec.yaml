@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 1.0.7
+version: 1.0.8
 
 environment:
   sdk: '>=2.19.0 <3.0.0'  # Related to Dart null safety, see https://github.com/dart-lang/sdk/issues/44072
@@ -28,27 +28,27 @@ dependencies:
     path: ../nucleus_one_dart_sdk
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.6
+  cupertino_icons: ^1.0.8
   fk_user_agent: ^2.1.0
-  flutter_downloader: ^1.10.5
+  flutter_downloader: ^1.11.8
   flutter_inappwebview: ^5.8.0
-  flutter_local_notifications: ^16.1.0
-  get_it: ^7.6.0
-  google_sign_in: ^6.1.5
+  flutter_local_notifications: ^16.3.3
+  get_it: ^7.7.0
+  google_sign_in: ^6.2.1
   meta: ^1.8.0
-  path_provider: ^2.1.1
-  permission_handler: ^11.0.1
-  photo_manager: ^2.7.2
-  provider: ^6.0.5
+  path_provider: ^2.1.4
+  permission_handler: ^11.3.1
+  photo_manager: ^3.2.3
+  provider: ^6.1.2
   quiver: ^3.2.1
-  shared_preferences: ^2.2.2
-  url_launcher: ^6.1.11
-  uuid: ^4.1.0
+  shared_preferences: ^2.3.2
+  url_launcher: ^6.3.0
+  uuid: ^4.4.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  dependency_validator: ^3.2.3
+  dependency_validator: ^4.1.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
