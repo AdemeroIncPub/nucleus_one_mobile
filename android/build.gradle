@@ -9,6 +9,33 @@ rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
+
+// AGP 8 requires namespace to be set in each module.  Inject one for legacy plugins
+// that still rely on the deprecated AndroidManifest.xml `package` attribute (e.g.
+// fk_user_agent 2.1.0).  We read the original `package` value from the plugin's
+// manifest so the namespace matches what existing plugin code expects.  Must be
+// registered before the evaluationDependsOn below.
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                if (namespace == null) {
+                    def manifestFile = new File(project.projectDir, "src/main/AndroidManifest.xml")
+                    if (manifestFile.exists()) {
+                        def m = (manifestFile.text =~ /package\s*=\s*"([^"]+)"/)
+                        if (m) {
+                            namespace = m[0][1]
+                        }
+                    }
+                    if (namespace == null) {
+                        namespace = "com.legacy." + project.name.replace('-', '_').replace('.', '_')
+                    }
+                }
+            }
+        }
+    }
+}
+
 subprojects {
     project.evaluationDependsOn(":app")
 }

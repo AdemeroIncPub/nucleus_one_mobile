@@ -228,7 +228,7 @@ class _SinglePageAppHostModel with ChangeNotifier {
 
               {
                 final appConfig = _sl<AppConfig>();
-                final urlForCookie = Uri.parse('https://' + appConfig.topLevelDomain);
+                final urlForCookie = iawv.WebUri('https://' + appConfig.topLevelDomain);
                 final cookieManager = iawv.CookieManager.instance();
                 final expiresDate =
                     DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch;
@@ -599,7 +599,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
 
   iawv.URLRequest _buildURLRequest(Uri url) {
     return iawv.URLRequest(
-      url: url,
+      url: iawv.WebUri.uri(url),
     );
   }
 
@@ -626,7 +626,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
     switch (pathName) {
       case '/dashboard':
         if (!_model!.loggedIn) {
-          final urlForCookie = Uri.parse(_sl<AppConfig>().webAppBaseUrl + '/');
+          final urlForCookie = iawv.WebUri(_sl<AppConfig>().webAppBaseUrl + '/');
           final cookieManager = iawv.CookieManager.instance();
           final sessionId = (await cookieManager.getCookie(url: urlForCookie, name: 'session_v2'))
               ?.value as String?;

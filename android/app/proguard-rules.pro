@@ -21,3 +21,9 @@
 
 -keep class com.google.android.** { *; }
 -keep class com.google.firebase.** { *; }
+
+# J2ObjC annotations are referenced by transitive deps (e.g. Guava) but aren't on
+# the Android classpath.  R8 logs them as missing on AGP 8+ minify.
+-dontwarn com.google.j2objc.annotations.**
+-dontwarn javax.annotation.**
+-dontwarn javax.lang.model.**
