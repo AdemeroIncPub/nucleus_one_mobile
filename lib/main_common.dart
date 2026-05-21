@@ -234,7 +234,7 @@ class _SinglePageAppHostModel with ChangeNotifier {
                     DateTime.now().add(const Duration(days: 30)).millisecondsSinceEpoch;
                 await cookieManager.setCookie(
                   url: urlForCookie,
-                  name: 'session_v1',
+                  name: 'session_v2',
                   value: Session.n1SessionId!,
                   domain: appConfig.topLevelDomain,
                   path: '/',
@@ -628,7 +628,7 @@ class _EmbededWebAppPageState extends State<_EmbededWebAppPage> {
         if (!_model!.loggedIn) {
           final urlForCookie = Uri.parse(_sl<AppConfig>().webAppBaseUrl + '/');
           final cookieManager = iawv.CookieManager.instance();
-          final sessionId = (await cookieManager.getCookie(url: urlForCookie, name: 'session_v1'))
+          final sessionId = (await cookieManager.getCookie(url: urlForCookie, name: 'session_v2'))
               ?.value as String?;
 
           if (sessionId == null) {
